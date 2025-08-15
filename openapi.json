@@ -1,0 +1,162 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Universal Server Control API",
+    "description": "API для керування Proxmox, BlissOS та будь-яким сервером. Дозволяє запускати програми, виконувати команди, керувати контейнерами та браузером.",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/lxc/list": {
+      "get": {
+        "summary": "Отримати список LXC контейнерів з Proxmox",
+        "operationId": "listLXC",
+        "responses": {
+          "200": {
+            "description": "Список LXC контейнерів",
+            "content": {
+              "application/json": {
+                "example": [
+                  {"id": "101", "name": "webserver", "status": "running"},
+                  {"id": "102", "name": "dbserver", "status": "stopped"}
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lxc/start": {
+      "post": {
+        "summary": "Запустити LXC контейнер",
+        "operationId": "startLXC",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "properties": { "id": { "type": "string" } }, "required": ["id"] },
+              "example": { "id": "101" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Контейнер запущено" }
+        }
+      }
+    },
+    "/lxc/stop": {
+      "post": {
+        "summary": "Зупинити LXC контейнер",
+        "operationId": "stopLXC",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "properties": { "id": { "type": "string" } }, "required": ["id"] },
+              "example": { "id": "101" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Контейнер зупинено" }
+        }
+      }
+    },
+    "/server/exec": {
+      "post": {
+        "summary": "Виконати shell-команду на сервері",
+        "operationId": "execCommand",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "properties": { "command": { "type": "string" } }, "required": ["command"] },
+              "example": { "command": "ls -la /" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Результат виконання команди",
+            "content": { "application/json": { "example": { "output": "file1.txt\nfile2.txt" } } }
+          }
+        }
+      }
+    },
+    "/blissos/app/list": {
+      "get": {
+        "summary": "Список встановлених програм у BlissOS",
+        "operationId": "listApps",
+        "responses": {
+          "200": {
+            "description": "Список програм",
+            "content": {
+              "application/json": {
+                "example": ["com.android.chrome", "org.mozilla.firefox"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/blissos/app/start": {
+      "post": {
+        "summary": "Запустити програму у BlissOS",
+        "operationId": "startApp",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "properties": { "package": { "type": "string" } }, "required": ["package"] },
+              "example": { "package": "com.android.chrome" }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Програму запущено" } }
+      }
+    },
+    "/blissos/app/stop": {
+      "post": {
+        "summary": "Закрити програму у BlissOS",
+        "operationId": "stopApp",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "properties": { "package": { "type": "string" } }, "required": ["package"] },
+              "example": { "package": "com.android.chrome" }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Програму закрито" } }
+      }
+    },
+    "/browser/open": {
+      "post": {
+        "summary": "Відкрити URL у браузері",
+        "operationId": "openBrowser",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "properties": { "url": { "type": "string", "format": "uri" } }, "required": ["url"] },
+              "example": { "url": "https://example.com" }
+            }
+          }
+        },
+        "responses": { "200": { "description": "URL відкрито" } }
+      }
+    },
+    "/browser/screenshot": {
+      "get": {
+        "summary": "Зробити скріншот активного браузера",
+        "operationId": "browserScreenshot",
+        "responses": {
+          "200": {
+            "description": "PNG зображення",
+            "content": { "image/png": {} }
+          }
+        }
+      }
+    }
+  }
+}

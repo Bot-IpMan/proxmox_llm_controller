@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+proxmoxer
+pydantic
+requests
+psutil
+paramiko
