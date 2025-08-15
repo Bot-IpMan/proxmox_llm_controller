@@ -76,7 +76,9 @@ services:
       - ./openapi.json:/app/openapi.json:ro
       # Якщо хочеш live-reload коду під час розробки:
       # - ./controller:/app
-    command: ["/bin/sh","-lc","pip install paramiko && pip install -r /app/requirements.txt && uvicorn app:app --host 0.0.0.0 --port 8000"]
+    # Всі залежності вже встановлені під час збірки образу,
+    # тож запускаємо застосунок напряму без повторної установки пакетів
+    command: ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
 
     ports:
       - "8000:8000"
