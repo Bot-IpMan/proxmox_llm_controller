@@ -92,14 +92,25 @@ class LXCExecSpec(BaseModel):
     @field_validator("cmd")
     @classmethod
     def allowlist(cls, v: str):
+        v = v.lstrip()
+        forbidden = [";", "&&", "|", "`", "&"]
+        if any(x in v for x in forbidden):
+            raise ValueError("Shell metacharacters are not allowed")
+        try:
+            parts = shlex.split(v)
+        except ValueError as e:
+            raise ValueError(f"Invalid command: {e}") from e
+        if not parts:
+            raise ValueError("Command cannot be empty")
         allowed = [
-            "systemctl ", "service ", "journalctl ", "ls ", "cat ", "tail ",
-            "head ", "df ", "du ", "ps ", "kill ", "docker ", "git ",
-            "curl ", "wget ", "python3 ", "pip ", "bash ", "sh ",
-            "apt ", "apt-get "
+            "systemctl", "service", "journalctl", "ls", "cat", "tail",
+            "head", "df", "du", "ps", "kill", "docker", "git",
+            "curl", "wget", "python3", "pip", "bash", "sh",
+            "apt", "apt-get"
         ]
-        if not any(v.startswith(p) for p in allowed):
-            raise ValueError(f"Command not allowed. Allowed prefixes: {allowed}")
+        executable = os.path.basename(parts[0])
+        if executable not in allowed:
+            raise ValueError(f"Command not allowed. Allowed executables: {allowed}")
         return v
 
 
