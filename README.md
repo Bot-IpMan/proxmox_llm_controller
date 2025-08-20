@@ -74,3 +74,18 @@
 ## Архітектура
 
 Локальна LLM, розгорнута через Ollama, може спілкуватися з FastAPI‑контролером і віддавати завдання (наприклад, створити контейнер) у вигляді JSON. Контролер виконує виклики до Proxmox API з допомогою `proxmoxer` й повертає результат у зручному форматі. Такий підхід дозволяє відокремити LLM від прямого root‑доступу на хості, реалізувати фільтрацію та логування, і легко розширювати функціональність.
+
+## Dependency management
+
+Python dependencies for the controller reside in `controller/requirements.txt` and use compatible release specifiers (e.g., `fastapi~=0.111`). After modifying versions, reinstall the environment:
+
+```bash
+pip install -r controller/requirements.txt
+```
+
+To generate a fully pinned lock file with all transitive dependencies, use `pip-tools`:
+
+```bash
+pip install pip-tools
+pip-compile controller/requirements.txt --output-file controller/requirements.lock
+```
