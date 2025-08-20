@@ -6,6 +6,8 @@ import subprocess
 from io import StringIO
 from functools import lru_cache
 from typing import Optional, Dict, Any, List, Tuple, Literal
+import re
+from string import Template
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -514,17 +516,19 @@ def deploy(spec: DeploySpec) -> Dict[str, Any]:
         raise _http_500("PVE_SSH_HOST is not configured")
 
     ctx = {"repo_url": spec.repo_url, "workdir": spec.workdir}
+    safe_ctx = {k: shlex.quote(v) for k, v in ctx.items()}
+
     def render(c: str) -> str:
-        out = c
-        for k, v in ctx.items():
-            out = out.replace("{{"+k+"}}", shlex.quote(v))
-        return out
+        tmpl_str = re.sub(r"\{\{(\w+)\}\}", r"${\1}", c)
+        template = Template(tmpl_str)
+        return template.safe_substitute(safe_ctx)
 
     steps: List[Dict[str, Any]] = []
     commands = [*spec.setup, *spec.commands]
     for c in commands:
         inner = render(c)
-        pct_cmd = f"pct exec {spec.target_vmid} -- bash -lc {shlex.quote(inner)}"
+        vmid = shlex.quote(str(spec.target_vmid))
+        pct_cmd = f"pct exec {vmid} -- bash -lc {shlex.quote(inner)}"
         try:
             res = subprocess.run(["ssh", "-i", key, f"{user}@{host}", pct_cmd],
                                  capture_output=True, text=True, timeout=3600)
