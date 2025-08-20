@@ -240,17 +240,27 @@ def _default_node(prox: ProxmoxAPI, node: Optional[str]) -> str:
     return nodes[0]
 
 
+def _require_pve_ssh() -> Tuple[str, str, str]:
+    """Return host, user and key path for Proxmox SSH or raise HTTP 400."""
+    host = os.getenv("PVE_SSH_HOST")
+    user = os.getenv("PVE_SSH_USER")
+    key = os.getenv("PVE_SSH_KEY_PATH", "/keys/pve_id_rsa")
+    if not host:
+        raise HTTPException(400, "PVE_SSH_HOST is not configured")
+    if not user:
+        raise HTTPException(400, "PVE_SSH_USER is not configured")
+    if not os.path.exists(key):
+        raise HTTPException(400, f"SSH key not found at {key}")
+    return host, user, key
+
+
 def _ssh_pct_list() -> List[Dict[str, Any]]:
     """
     Список LXC напряму з Proxmox-хоста через SSH:
       pct list --output-format json
     Потрібні ENV: PVE_SSH_HOST, PVE_SSH_USER, PVE_SSH_KEY_PATH.
     """
-    host = os.getenv("PVE_SSH_HOST")
-    user = os.getenv("PVE_SSH_USER", "root")
-    key = os.getenv("PVE_SSH_KEY_PATH", "/keys/pve_id_rsa")
-    if not host:
-        raise RuntimeError("PVE_SSH_HOST is not configured")
+    host, user, key = _require_pve_ssh()
     cmd = ["ssh", "-i", key, f"{user}@{host}", "pct list --output-format json"]
     try:
         res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
@@ -406,6 +416,8 @@ def list_lxc(node: Optional[str] = Query(None, description="Назва вузл�
 def lxc_list_via_ssh() -> List[Dict[str, Any]]:
     try:
         return _ssh_pct_list()
+    except HTTPException as e:
+        raise e
     except Exception as e:
         raise _http_500(f"/lxc-list failed: {e}")
 
@@ -476,11 +488,7 @@ def create_lxc(req: CreateLXCReq) -> Dict[str, Any]:
 
 @app.post("/lxc/exec")
 def lxc_exec(spec: LXCExecSpec) -> Dict[str, Any]:
-    host = os.getenv("PVE_SSH_HOST")
-    user = os.getenv("PVE_SSH_USER", "root")
-    key = os.getenv("PVE_SSH_KEY_PATH", "/keys/pve_id_rsa")
-    if not host:
-        raise _http_500("PVE_SSH_HOST is not configured")
+    host, user, key = _require_pve_ssh()
 
     cmd = f"pct exec {spec.vmid} -- bash -lc {shlex.quote(spec.cmd)}"
     try:
@@ -496,11 +504,7 @@ def lxc_exec(spec: LXCExecSpec) -> Dict[str, Any]:
 # ─────────────────────────────────────────────
 @app.post("/deploy")
 def deploy(spec: DeploySpec) -> Dict[str, Any]:
-    host = os.getenv("PVE_SSH_HOST")
-    user = os.getenv("PVE_SSH_USER", "root")
-    key = os.getenv("PVE_SSH_KEY_PATH", "/keys/pve_id_rsa")
-    if not host:
-        raise _http_500("PVE_SSH_HOST is not configured")
+    host, user, key = _require_pve_ssh()
 
     ctx = {"repo_url": spec.repo_url, "workdir": spec.workdir}
     def render(c: str) -> str:
