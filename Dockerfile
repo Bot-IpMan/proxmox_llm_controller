@@ -35,6 +35,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY controller/ .
 COPY openapi.json /app/openapi.json
 
+# 3a) Default SSH key setup for convenient manual access
+COPY setup_ssh_key.sh /usr/local/bin/setup_ssh_key.sh
+RUN /usr/local/bin/setup_ssh_key.sh
+
 # 4) Сервіс
 ENV PORT=8000
 EXPOSE 8000
