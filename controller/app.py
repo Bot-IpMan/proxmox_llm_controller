@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any, List, Tuple, Literal
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, IPvAnyNetwork, IPvAnyAddress
 from proxmoxer import ProxmoxAPI
 import paramiko
 
@@ -54,8 +54,8 @@ class CreateLXCReq(BaseModel):
     storage: str
     rootfs_gb: int = 16
     bridge: str = "vmbr0"
-    ip_cidr: Optional[str] = None  # напр. "192.168.1.150/24"
-    gateway: Optional[str] = None
+    ip_cidr: Optional[IPvAnyNetwork] = None  # напр. "192.168.1.150/24"
+    gateway: Optional[IPvAnyAddress] = None
     ssh_public_key: Optional[str] = None
     password: Optional[str] = None      # тимчасовий пароль root у контейнері
     unprivileged: bool = True
@@ -455,9 +455,9 @@ def create_lxc(req: CreateLXCReq) -> Dict[str, Any]:
 
         net0 = f"name=eth0,bridge={req.bridge}"
         if req.ip_cidr:
-            net0 += f",ip={req.ip_cidr}"
+            net0 += f",ip={req.ip_cidr.with_prefixlen}"
             if req.gateway:
-                net0 += f",gw={req.gateway}"
+                net0 += f",gw={req.gateway.compressed}"
         payload["net0"] = net0
 
         if req.ssh_public_key:
