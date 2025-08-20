@@ -1,7 +1,7 @@
-fastapi
-uvicorn[standard]
-proxmoxer
-pydantic
-requests
-psutil
-paramiko
+fastapi~=0.111
+uvicorn[standard]~=0.30
+proxmoxer~=2.0
+pydantic~=2.7
+requests~=2.32
+psutil~=5.9
+paramiko~=3.4
