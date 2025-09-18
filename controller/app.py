@@ -134,26 +134,26 @@ class DeploySpec(BaseModel):
 
 
 class SSHSpec(BaseModel):
-    host: str
-    user: str = "root"
-    port: int = 22
+    host: Optional[str] = None
+    user: Optional[str] = None
+    port: Optional[int] = None
     cmd: str
     key_path: Optional[str] = None
     key_data_b64: Optional[str] = None  # base64(OpenSSH private key)
     password: Optional[str] = None
-    strict_host_key: bool = False
+    strict_host_key: Optional[bool] = None
     env: Optional[Dict[str, str]] = None
     cwd: Optional[str] = None
 
 
 class AppLaunchSpec(BaseModel):
-    host: str
-    user: str = "root"
-    port: int = 22
+    host: Optional[str] = None
+    user: Optional[str] = None
+    port: Optional[int] = None
     key_path: Optional[str] = None
     key_data_b64: Optional[str] = None
     password: Optional[str] = None
-    strict_host_key: bool = False
+    strict_host_key: Optional[bool] = None
     program: str = Field(..., description="firefox | google-chrome | chromium | code | xterm | tmux | bash ...")
     args: List[str] = Field(default_factory=list)
     env: Optional[Dict[str, str]] = None
@@ -163,13 +163,13 @@ class AppLaunchSpec(BaseModel):
 
 
 class BrowserSpec(BaseModel):
-    host: str
-    user: str = "root"
-    port: int = 22
+    host: Optional[str] = None
+    user: Optional[str] = None
+    port: Optional[int] = None
     key_path: Optional[str] = None
     key_data_b64: Optional[str] = None
     password: Optional[str] = None
-    strict_host_key: bool = False
+    strict_host_key: Optional[bool] = None
 
     action: Literal["open", "screenshot", "pdf"] = "open"
     url: str
@@ -286,6 +286,94 @@ def _ssh_pct_list() -> List[Dict[str, Any]]:
         return json.loads(res.stdout)
     except Exception:
         raise RuntimeError(f"Unexpected pct output: {res.stdout!r}")
+
+
+def _first_non_empty(*values: Any) -> Optional[Any]:
+    for value in values:
+        if value is None:
+            continue
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped:
+                continue
+            return stripped
+        return value
+    return None
+
+
+def _env_non_empty(name: str) -> Optional[str]:
+    value = os.getenv(name)
+    if value is None:
+        return None
+    value = value.strip()
+    return value or None
+
+
+def _resolve_ssh_connection(spec: BaseModel) -> Dict[str, Any]:
+    host = _first_non_empty(
+        getattr(spec, "host", None),
+        _env_non_empty("DEFAULT_SSH_HOST"),
+        _env_non_empty("PVE_SSH_HOST"),
+    )
+    if not host:
+        raise HTTPException(
+            400,
+            "SSH host is not provided. Supply 'host' in the request or configure DEFAULT_SSH_HOST/PVE_SSH_HOST.",
+        )
+
+    user = _first_non_empty(
+        getattr(spec, "user", None),
+        _env_non_empty("DEFAULT_SSH_USER"),
+        _env_non_empty("PVE_SSH_USER"),
+        "root",
+    )
+
+    port_candidate = getattr(spec, "port", None)
+    if port_candidate is None:
+        port_candidate = _first_non_empty(
+            _env_non_empty("DEFAULT_SSH_PORT"),
+            _env_non_empty("PVE_SSH_PORT"),
+        )
+    if port_candidate is None:
+        port = 22
+    else:
+        try:
+            port = int(port_candidate)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(400, f"Invalid SSH port value: {port_candidate}") from exc
+
+    key_path = _first_non_empty(
+        getattr(spec, "key_path", None),
+        _env_non_empty("DEFAULT_SSH_KEY_PATH"),
+        _env_non_empty("PVE_SSH_KEY_PATH"),
+    )
+    if not key_path and os.path.exists("/keys/pve_id_rsa"):
+        key_path = "/keys/pve_id_rsa"
+
+    key_data_b64 = _first_non_empty(
+        getattr(spec, "key_data_b64", None),
+        _env_non_empty("DEFAULT_SSH_KEY_B64"),
+    )
+
+    password = _first_non_empty(
+        getattr(spec, "password", None),
+        _env_non_empty("DEFAULT_SSH_PASSWORD"),
+        _env_non_empty("PVE_SSH_PASSWORD"),
+    )
+
+    strict_host_key = getattr(spec, "strict_host_key", None)
+    if strict_host_key is None:
+        strict_host_key = _bool_env("DEFAULT_SSH_STRICT_HOST_KEY", False)
+
+    return {
+        "host": host,
+        "user": user,
+        "port": port,
+        "key_path": key_path,
+        "key_data_b64": key_data_b64,
+        "password": password,
+        "strict_host_key": bool(strict_host_key),
+    }
 
 
 # ─────────────────────────────────────────────
@@ -640,11 +728,7 @@ def deploy(spec: DeploySpec) -> Dict[str, Any]:
 # ─────────────────────────────────────────────
 @app.post("/ssh/run")
 def ssh_run(spec: SSHSpec) -> Dict[str, Any]:
-    runner = SSHRunner(
-        host=spec.host, user=spec.user, port=spec.port,
-        key_path=spec.key_path, key_data_b64=spec.key_data_b64, password=spec.password,
-        strict_host_key=spec.strict_host_key
-    )
+    runner = SSHRunner(**_resolve_ssh_connection(spec))
     try:
         rc, out, err = runner.run(spec.cmd, env=spec.env, cwd=spec.cwd, timeout=1800)
         return {"rc": rc, "stdout": out, "stderr": err}
@@ -659,11 +743,7 @@ def ssh_run(spec: SSHSpec) -> Dict[str, Any]:
 # ─────────────────────────────────────────────
 @app.post("/apps/launch")
 def apps_launch(spec: AppLaunchSpec) -> Dict[str, Any]:
-    runner = SSHRunner(
-        host=spec.host, user=spec.user, port=spec.port,
-        key_path=spec.key_path, key_data_b64=spec.key_data_b64, password=spec.password,
-        strict_host_key=spec.strict_host_key
-    )
+    runner = SSHRunner(**_resolve_ssh_connection(spec))
     env = dict(spec.env or {})
     if spec.display:
         env["DISPLAY"] = spec.display
@@ -692,11 +772,7 @@ def apps_launch(spec: AppLaunchSpec) -> Dict[str, Any]:
 # ─────────────────────────────────────────────
 @app.post("/browser/open")
 def browser_open(spec: BrowserSpec) -> Dict[str, Any]:
-    runner = SSHRunner(
-        host=spec.host, user=spec.user, port=spec.port,
-        key_path=spec.key_path, key_data_b64=spec.key_data_b64, password=spec.password,
-        strict_host_key=spec.strict_host_key
-    )
+    runner = SSHRunner(**_resolve_ssh_connection(spec))
 
     try:
         def build_headless_cmd(bin_name: str) -> str:
