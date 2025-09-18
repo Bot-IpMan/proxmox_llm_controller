@@ -306,9 +306,94 @@ class SSHRunner:
         strict_host_key: bool = False,
         timeout: int = 30,
     ):
-        self.host = host.split(":")[0] if ":" in host else host
-        self.port = port
-        self.user = user
+        raw_host = host.strip() if host else ""
+        if not raw_host:
+            raise SSHError("SSH host cannot be empty")
+
+        lowered = raw_host.lower()
+        if lowered.startswith("ssh://"):
+            raw_host = raw_host[6:]
+        elif "://" in raw_host:
+            scheme = raw_host.split("://", 1)[0]
+            raise SSHError(f"Unsupported SSH URI scheme: {scheme}")
+
+        raw_host = raw_host.strip()
+        if not raw_host:
+            raise SSHError("SSH host cannot be empty")
+
+        if "/" in raw_host:
+            host_only, remainder = raw_host.split("/", 1)
+            if remainder.strip():
+                raise SSHError("SSH host specification must not include a path component")
+            raw_host = host_only.strip()
+
+        detected_user: Optional[str] = None
+        detected_port: Optional[int] = None
+
+        if "@" in raw_host:
+            user_part, raw_host = raw_host.split("@", 1)
+            user_part = user_part.strip()
+            raw_host = raw_host.strip()
+            if not user_part:
+                raise SSHError("SSH username in host specification cannot be empty")
+            if not raw_host:
+                raise SSHError("SSH host cannot be empty")
+            detected_user = user_part
+
+        if raw_host.startswith("["):
+            end = raw_host.find("]")
+            if end == -1:
+                raise SSHError("Invalid IPv6 SSH host format. Expected closing ']'.")
+            inner_host = raw_host[1:end].strip()
+            if not inner_host:
+                raise SSHError("SSH host cannot be empty")
+            remainder = raw_host[end + 1 :]
+            if remainder:
+                if not remainder.startswith(":"):
+                    raise SSHError("Invalid SSH host format after IPv6 literal")
+                port_str = remainder[1:].strip()
+                if not port_str:
+                    raise SSHError("SSH port in host specification cannot be empty")
+                try:
+                    detected_port = int(port_str)
+                except ValueError as exc:
+                    raise SSHError(f"Invalid SSH port value: {port_str}") from exc
+            parsed_host = inner_host
+        elif ":" in raw_host and raw_host.count(":") == 1:
+            host_part, port_str = raw_host.rsplit(":", 1)
+            host_part = host_part.strip()
+            port_str = port_str.strip()
+            if not host_part:
+                raise SSHError("SSH host cannot be empty")
+            if not port_str:
+                raise SSHError("SSH port in host specification cannot be empty")
+            try:
+                detected_port = int(port_str)
+            except ValueError as exc:
+                raise SSHError(f"Invalid SSH port value: {port_str}") from exc
+            parsed_host = host_part
+        else:
+            parsed_host = raw_host
+
+        if not parsed_host:
+            raise SSHError("SSH host cannot be empty")
+
+        final_port = detected_port if detected_port is not None else port
+        try:
+            final_port_int = int(final_port)
+        except (TypeError, ValueError) as exc:
+            raise SSHError(f"Invalid SSH port value: {final_port}") from exc
+        if not (1 <= final_port_int <= 65535):
+            raise SSHError("SSH port must be between 1 and 65535")
+
+        final_user = detected_user if detected_user is not None else user
+        final_user = final_user.strip() if final_user else ""
+        if not final_user:
+            raise SSHError("SSH username cannot be empty")
+
+        self.host = parsed_host
+        self.port = final_port_int
+        self.user = final_user
         self.key_path = key_path
         self.key_data_b64 = key_data_b64
         self.password = password
