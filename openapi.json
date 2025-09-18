@@ -476,18 +476,18 @@
         "properties": {
           "host": {
             "type": "string",
-            "description": "SSH host or user@host. Supports hostnames, IPv4/IPv6 literals (optionally in [addr] form), optional :port, and ssh://user@host:port URIs.",
+            "description": "SSH host or user@host. Supports hostnames, IPv4/IPv6 literals (optionally in [addr] form), optional :port and ssh://user@host:port URIs. Якщо не задано, використовується DEFAULT_SSH_HOST або PVE_SSH_HOST.",
             "example": "root@192.168.1.140:2222"
           },
           "user": {
             "type": "string",
             "default": "root",
-            "description": "SSH username. When the host field already contains user@..., that value wins."
+            "description": "SSH username. When the host field already contains user@..., that value wins. Якщо поле не задано, використовується DEFAULT_SSH_USER або PVE_SSH_USER (типово root)."
           },
           "port": {
             "type": "integer",
             "default": 22,
-            "description": "SSH port to use when the host field does not include one."
+            "description": "SSH port to use when the host field does not include one. Може бути заданий через DEFAULT_SSH_PORT або PVE_SSH_PORT."
           },
           "cmd": { "type": "string" },
           "key_path": { "type": "string" },
@@ -497,14 +497,25 @@
           "env": { "type": "object", "additionalProperties": { "type": "string" } },
           "cwd": { "type": "string" }
         },
-        "required": ["host", "cmd"]
+        "required": ["cmd"]
       },
       "BrowserSpec": {
         "type": "object",
         "properties": {
-          "host": { "type": "string" },
-          "user": { "type": "string", "default": "root" },
-          "port": { "type": "integer", "default": 22 },
+          "host": {
+            "type": "string",
+            "description": "SSH-хост для запуску браузера. Якщо не задано, використовується DEFAULT_SSH_HOST або PVE_SSH_HOST."
+          },
+          "user": {
+            "type": "string",
+            "default": "root",
+            "description": "SSH-користувач. Може братися з DEFAULT_SSH_USER/PVE_SSH_USER."
+          },
+          "port": {
+            "type": "integer",
+            "default": 22,
+            "description": "SSH-порт. Якщо не задано, можна визначити через DEFAULT_SSH_PORT/PVE_SSH_PORT."
+          },
           "action": { "type": "string", "enum": ["open", "screenshot", "pdf"], "default": "open" },
           "url": { "type": "string" },
           "headless": { "type": "boolean", "default": true },
@@ -517,7 +528,7 @@
           "output_path": { "type": "string" },
           "extra_args": { "type": "array", "items": { "type": "string" } }
         },
-        "required": ["host", "url"]
+        "required": ["url"]
       }
     }
   }
