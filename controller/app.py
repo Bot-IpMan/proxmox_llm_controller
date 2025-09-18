@@ -3,6 +3,7 @@ import json
 import shlex
 import logging
 import subprocess
+import socket
 from io import StringIO
 from functools import lru_cache
 from typing import Optional, Dict, Any, List, Tuple, Literal
@@ -465,6 +466,10 @@ class SSHRunner:
             err = stderr.read().decode("utf-8", errors="ignore")
             rc = stdout.channel.recv_exit_status()
             return rc, out, err
+        except socket.gaierror as e:
+            raise SSHError(f"Unable to resolve SSH host '{self.host}': {e}") from e
+        except paramiko.ssh_exception.NoValidConnectionsError as e:
+            raise SSHError(f"Unable to connect to {self.host}:{self.port}: {e}") from e
         except Exception as e:
             raise SSHError(str(e))
         finally:
@@ -643,6 +648,8 @@ def ssh_run(spec: SSHSpec) -> Dict[str, Any]:
     try:
         rc, out, err = runner.run(spec.cmd, env=spec.env, cwd=spec.cwd, timeout=1800)
         return {"rc": rc, "stdout": out, "stderr": err}
+    except SSHError as e:
+        raise HTTPException(status_code=400, detail=f"/ssh/run failed: {e}") from e
     except Exception as e:
         raise _http_500(f"/ssh/run failed: {e}")
 
@@ -674,6 +681,8 @@ def apps_launch(spec: AppLaunchSpec) -> Dict[str, Any]:
     try:
         rc, out, err = runner.run(cmd, env=env, cwd=spec.cwd, timeout=120)
         return {"rc": rc, "stdout": out, "stderr": err}
+    except SSHError as e:
+        raise HTTPException(status_code=400, detail=f"/apps/launch failed: {e}") from e
     except Exception as e:
         raise _http_500(f"/apps/launch failed: {e}")
 
@@ -689,59 +698,78 @@ def browser_open(spec: BrowserSpec) -> Dict[str, Any]:
         strict_host_key=spec.strict_host_key
     )
 
-    def build_headless_cmd(bin_name: str) -> str:
-        flags = [
-            "--no-first-run",
-            "--no-default-browser-check",
-            "--disable-gpu",
-            "--disable-software-rasterizer",
-            "--disable-dev-shm-usage",
-            f"--window-size={spec.window_size}",
-        ]
-        if spec.user_data_dir:
-            flags.append(f"--user-data-dir={shlex.quote(spec.user_data_dir)}")
-        flags += spec.extra_args
+    try:
+        def build_headless_cmd(bin_name: str) -> str:
+            flags = [
+                "--no-first-run",
+                "--no-default-browser-check",
+                "--disable-gpu",
+                "--disable-software-rasterizer",
+                "--disable-dev-shm-usage",
+                f"--window-size={spec.window_size}",
+            ]
+            if spec.user_data_dir:
+                flags.append(f"--user-data-dir={shlex.quote(spec.user_data_dir)}")
+            flags += spec.extra_args
 
-        if spec.action == "open":
-            return " ".join([shlex.quote(bin_name), "--headless=new", *flags, shlex.quote(spec.url)])
-        if spec.action == "screenshot":
-            outp = spec.output_path or "/tmp/screenshot.png"
-            return " ".join([shlex.quote(bin_name), "--headless=new", *flags, f"--screenshot={shlex.quote(outp)}", shlex.quote(spec.url)])
-        if spec.action == "pdf":
-            outp = spec.output_path or "/tmp/page.pdf"
-            return " ".join([shlex.quote(bin_name), "--headless=new", *flags, f"--print-to-pdf={shlex.quote(outp)}", shlex.quote(spec.url)])
-        raise HTTPException(400, f"Unsupported action: {spec.action}")
+            if spec.action == "open":
+                return " ".join([shlex.quote(bin_name), "--headless=new", *flags, shlex.quote(spec.url)])
+            if spec.action == "screenshot":
+                outp = spec.output_path or "/tmp/screenshot.png"
+                return " ".join([
+                    shlex.quote(bin_name),
+                    "--headless=new",
+                    *flags,
+                    f"--screenshot={shlex.quote(outp)}",
+                    shlex.quote(spec.url),
+                ])
+            if spec.action == "pdf":
+                outp = spec.output_path or "/tmp/page.pdf"
+                return " ".join([
+                    shlex.quote(bin_name),
+                    "--headless=new",
+                    *flags,
+                    f"--print-to-pdf={shlex.quote(outp)}",
+                    shlex.quote(spec.url),
+                ])
+            raise HTTPException(400, f"Unsupported action: {spec.action}")
 
-    # headless
-    if spec.headless:
-        for candidate in spec.browser_cmds:
+        # headless
+        if spec.headless:
+            for candidate in spec.browser_cmds:
+                check = f"command -v {shlex.quote(candidate)} >/dev/null 2>&1"
+                rc, _, _ = runner.run(check, timeout=10)
+                if rc == 0:
+                    cmd = build_headless_cmd(candidate)
+                    rc2, out2, err2 = runner.run(cmd, timeout=180)
+                    return {"rc": rc2, "stdout": out2, "stderr": err2, "used": candidate}
+            raise _http_500(f"No browser found from list: {spec.browser_cmds}")
+
+        # GUI (DISPLAY має бути налаштований на віддаленій машині)
+        env = {}
+        if os.getenv("DEFAULT_GUI_DISPLAY"):
+            env["DISPLAY"] = os.getenv("DEFAULT_GUI_DISPLAY")
+
+        # xdg-open спроба
+        rc, out, err = runner.run(
+            f"xdg-open {shlex.quote(spec.url)} >/dev/null 2>&1 & echo $!",
+            timeout=10,
+            env=env,
+        )
+        if rc == 0:
+            return {"rc": rc, "stdout": out, "stderr": err, "used": "xdg-open"}
+
+        # fallback: firefox/chrome без headless
+        for candidate in ["firefox"] + spec.browser_cmds:
             check = f"command -v {shlex.quote(candidate)} >/dev/null 2>&1"
-            rc, _, _ = runner.run(check, timeout=10)
-            if rc == 0:
-                cmd = build_headless_cmd(candidate)
-                rc2, out2, err2 = runner.run(cmd, timeout=180)
-                return {"rc": rc2, "stdout": out2, "stderr": err2, "used": candidate}
-        raise _http_500(f"No browser found from list: {spec.browser_cmds}")
-
-    # GUI (DISPLAY має бути налаштований на віддаленій машині)
-    env = {}
-    if os.getenv("DEFAULT_GUI_DISPLAY"):
-        env["DISPLAY"] = os.getenv("DEFAULT_GUI_DISPLAY")
-
-    # xdg-open спроба
-    rc, out, err = runner.run(f"xdg-open {shlex.quote(spec.url)} >/dev/null 2>&1 & echo $!", timeout=10, env=env)
-    if rc == 0:
-        return {"rc": rc, "stdout": out, "stderr": err, "used": "xdg-open"}
-
-    # fallback: firefox/chrome без headless
-    for candidate in ["firefox"] + spec.browser_cmds:
-        check = f"command -v {shlex.quote(candidate)} >/dev/null 2>&1"
-        rc2, _, _ = runner.run(check, timeout=10, env=env)
-        if rc2 == 0:
-            cmd = f"{shlex.quote(candidate)} {shlex.quote(spec.url)}"
-            rc3, out3, err3 = runner.run(cmd, timeout=30, env=env)
-            return {"rc": rc3, "stdout": out3, "stderr": err3, "used": candidate}
-    raise _http_500("No GUI browser found (tried xdg-open, firefox, chrome/chromium).")
+            rc2, _, _ = runner.run(check, timeout=10, env=env)
+            if rc2 == 0:
+                cmd = f"{shlex.quote(candidate)} {shlex.quote(spec.url)}"
+                rc3, out3, err3 = runner.run(cmd, timeout=30, env=env)
+                return {"rc": rc3, "stdout": out3, "stderr": err3, "used": candidate}
+        raise _http_500("No GUI browser found (tried xdg-open, firefox, chrome/chromium).")
+    except SSHError as e:
+        raise HTTPException(status_code=400, detail=f"/browser/open failed: {e}") from e
 
 
 # ─────────────────────────────────────────────
