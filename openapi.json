@@ -210,7 +210,12 @@
                   "items": {
                     "type": "object",
                     "properties": {
-                      "vmid": { "type": "integer", "description": "ID контейнера" },
+                      "vmid": {
+                        "type": "integer",
+                        "description": "ID контейнера",
+                        "minimum": 100,
+                        "maximum": 999
+                      },
                       "name": { "type": "string" },
                       "status": { "type": "string" },
                       "node": { "type": "string" },
@@ -279,7 +284,11 @@
                   "items": {
                     "type": "object",
                     "properties": {
-                      "vmid": { "type": "integer" },
+                      "vmid": {
+                        "type": "integer",
+                        "minimum": 100,
+                        "maximum": 999
+                      },
                       "status": { "type": "string" },
                       "node": { "type": "string" },
                       "name": { "type": "string" },
@@ -334,7 +343,12 @@
                 "type": "object",
                 "properties": {
                   "node": { "type": "string", "description": "Вузол (опціонально)" },
-                  "vmid": { "type": "integer", "description": "ID контейнера" }
+                  "vmid": {
+                    "type": "integer",
+                    "description": "ID контейнера",
+                    "minimum": 100,
+                    "maximum": 999
+                  }
                 },
                 "required": ["vmid"]
               },
@@ -389,7 +403,11 @@
                 "type": "object",
                 "properties": {
                   "node": { "type": "string" },
-                  "vmid": { "type": "integer" }
+                  "vmid": {
+                    "type": "integer",
+                    "minimum": 100,
+                    "maximum": 999
+                  }
                 },
                 "required": ["vmid"]
               }
@@ -453,7 +471,11 @@
                   "properties": {
                     "created": { "type": "boolean" },
                     "task": { "type": "string", "description": "UPID завдання Proxmox" },
-                    "vmid": { "type": "integer" },
+                    "vmid": {
+                      "type": "integer",
+                      "minimum": 100,
+                      "maximum": 999
+                    },
                     "node": { "type": "string" }
                   }
                 }
@@ -475,7 +497,12 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "vmid": { "type": "integer", "description": "ID контейнера" },
+                  "vmid": {
+                    "type": "integer",
+                    "description": "ID контейнера",
+                    "minimum": 100,
+                    "maximum": 999
+                  },
                   "cmd": {
                     "type": "string",
                     "description": "Команда для виконання (можна ланцюжити через '&&'). Дозволені лише безпечні утиліти: systemctl, service, journalctl, ls, cat, tail, head, df, du, ps, kill, docker, git, curl, wget, python3, pip, bash, sh, apt, apt-get. Символи ;, |, ` та поодинокий & заборонені."
@@ -745,14 +772,32 @@
         "type": "object",
         "properties": {
           "node": { "type": "string", "description": "Proxmox node (optional)" },
-          "vmid": { "type": "integer", "description": "Container ID", "minimum": 100 },
+          "vmid": {
+            "type": "integer",
+            "description": "Container ID (допустимі значення 100-999)",
+            "minimum": 100,
+            "maximum": 999
+          },
           "hostname": { "type": "string", "description": "Container hostname" },
           "cores": { "type": "integer", "default": 2, "minimum": 1 },
           "memory": { "type": "integer", "default": 2048, "minimum": 128, "description": "RAM in MB" },
-          "storage": { "type": "string", "description": "Storage name (e.g., local-lvm)" },
+          "storage": {
+            "type": "string",
+            "description": "Storage name",
+            "enum": ["local-lvm"]
+          },
           "rootfs_gb": { "type": "integer", "default": 16, "minimum": 4 },
-          "bridge": { "type": "string", "default": "vmbr0" },
-          "ip_cidr": { "type": "string", "description": "IP address with CIDR (e.g., 192.168.1.100/24)" },
+          "bridge": {
+            "type": "string",
+            "default": "vmbr0",
+            "enum": ["vmbr0"],
+            "description": "Network bridge"
+          },
+          "ip_cidr": {
+            "type": "string",
+            "description": "IP address with CIDR у підмережі 192.168.1.100-192.168.1.250/24",
+            "pattern": "^192\\.168\\.1\\.(?:1\\d\\d|2[0-4]\\d|250)/24$"
+          },
           "gateway": { "type": "string", "description": "Gateway IP" },
           "ssh_public_key": { "type": "string", "description": "SSH public key for root" },
           "password": { "type": "string", "description": "Root password" },
@@ -762,7 +807,14 @@
             "description": "Додаткові прапорці pct (наприклад, {\"nesting\": 1, \"keyctl\": 1})",
             "additionalProperties": { "type": "integer" }
           },
-          "ostemplate": { "type": "string", "description": "Template path" },
+          "ostemplate": {
+            "type": "string",
+            "description": "Template path (debian-12-standard або ubuntu-22.04-standard)",
+            "enum": [
+              "local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst",
+              "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst"
+            ]
+          },
           "start": { "type": "boolean", "default": true, "description": "Start after creation" }
         },
         "required": ["vmid", "hostname", "storage", "ostemplate"]
@@ -771,7 +823,12 @@
         "type": "object",
         "description": "Кроки деплою, що виконуються всередині контейнера через ``pct exec``. Спершу запускаються команди зі списку ``setup``, після чого виконується ``commands``. Шаблони ``{{repo_url}}`` та ``{{workdir}}`` підставляються автоматично.",
         "properties": {
-          "target_vmid": { "type": "integer", "description": "ID LXC контейнера, у який деплоїмо" },
+          "target_vmid": {
+            "type": "integer",
+            "description": "ID LXC контейнера, у який деплоїмо",
+            "minimum": 100,
+            "maximum": 999
+          },
           "repo_url": { "type": "string", "description": "URL Git репозиторію" },
           "workdir": { "type": "string", "default": "/opt/app", "description": "Каталог у контейнері для коду" },
           "setup": {
