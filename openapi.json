@@ -969,7 +969,7 @@
     "/apps/launch": {
       "post": {
         "summary": "Запустити програму на віддаленому сервері",
-        "description": "Виконує команду через SSH. За замовчуванням процес запускається у фоновому режимі з перенаправленням виводу у ``/tmp/<program>.log``.",
+        "description": "Виконує команду через SSH. Поле ``program`` приймає виконуваний файл (назву в ``$PATH`` або абсолютний шлях), а ``args`` — масив окремих аргументів, які екрануються автоматично. Прапорець ``background`` керує запуском через ``nohup``: якщо ``true``, процес стартує у фоні, stdout/stderr записуються у ``/tmp/<program>.log`` і у відповідь повертається PID; якщо ``false``, команда виконується синхронно й потоки повертаються напряму. Поле ``display`` (наприклад, ``:0``) додає однойменну змінну середовища для GUI-програм.",
         "operationId": "launchRemoteApp",
         "tags": ["Apps"],
         "requestBody": {
@@ -1036,7 +1036,7 @@
     "/browser/open": {
       "post": {
         "summary": "Відкрити URL в браузері на віддаленому сервері",
-        "description": "Запускає браузер через SSH. У headless-режимі шукає перший доступний двійковий файл із списку ``browser_cmds`` та виконує його з параметрами (може робити скріншот або PDF). У GUI-режимі намагається використати ``xdg-open`` або Firefox/Chrome.",
+        "description": "Запускає браузер через SSH. Поле ``action`` підтримує ``open`` (просто завантажити сторінку), ``screenshot`` (зберегти PNG) та ``pdf`` (друк сторінки у PDF). У headless-режимі шукає перший доступний двійковий файл зі списку ``browser_cmds``: для ``screenshot``/``pdf`` результат записується у ``output_path`` або типовий ``/tmp/screenshot.png``/``/tmp/page.pdf``. У GUI-режимі URL відкривається в інтерактивному вікні через ``xdg-open`` або Firefox/Chrome.",
         "operationId": "browserOpen",
         "tags": ["Browser"],
         "requestBody": {
@@ -1271,12 +1271,12 @@
           },
           "program": {
             "type": "string",
-            "description": "Команда для запуску (наприклад, firefox, google-chrome, chromium, code, xterm, tmux, bash)"
+            "description": "Команда для запуску (назва у ``$PATH`` або абсолютний шлях; приклади: firefox, google-chrome, chromium, code, xterm, tmux, bash)"
           },
           "args": {
             "type": "array",
             "items": { "type": "string" },
-            "description": "Аргументи командного рядка",
+            "description": "Аргументи командного рядка (кожен елемент передається як окремий токен і екранується автоматично)",
             "default": []
           },
           "env": {
@@ -1288,11 +1288,11 @@
           "background": {
             "type": "boolean",
             "default": true,
-            "description": "Якщо true, команда запускається через nohup у фоні з логом у /tmp/<program>.log"
+            "description": "Якщо ``true``, команда запускається через ``nohup`` у фоні з логом у ``/tmp/<program>.log`` і у відповіді повертається PID; якщо ``false``, виконується синхронно"
           },
           "display": {
             "type": "string",
-            "description": "DISPLAY для GUI (наприклад, :0)"
+            "description": "DISPLAY для GUI (наприклад, ``:0``); при заданні додається однойменна змінна середовища"
           }
         },
         "required": ["program"]
@@ -1331,12 +1331,17 @@
             "default": false,
             "description": "Чи перевіряти host key"
           },
-          "action": { "type": "string", "enum": ["open", "screenshot", "pdf"], "default": "open" },
+          "action": {
+            "type": "string",
+            "enum": ["open", "screenshot", "pdf"],
+            "default": "open",
+            "description": "``open`` — просто відкриває URL, ``screenshot`` — зберігає PNG-скріншот, ``pdf`` — формує друк сторінки у PDF"
+          },
           "url": { "type": "string" },
           "headless": {
             "type": "boolean",
             "default": true,
-            "description": "Якщо true, запускає браузер у headless-режимі. Якщо false — намагається використати xdg-open/firefox/chrome на GUI."
+            "description": "Якщо ``true``, запускає браузер у headless-режимі (результати ``screenshot``/``pdf`` зберігаються у файл). Якщо ``false`` — намагається використати ``xdg-open`` або Firefox/Chrome на GUI."
           },
           "browser_cmds": {
             "type": "array",
@@ -1350,7 +1355,7 @@
           },
           "output_path": {
             "type": "string",
-            "description": "Шлях на віддаленій машині для збереження скріншоту або PDF"
+            "description": "Шлях на віддаленій машині для збереження скріншоту або PDF; якщо не задано, використовуються ``/tmp/screenshot.png`` або ``/tmp/page.pdf``"
           },
           "extra_args": {
             "type": "array",
