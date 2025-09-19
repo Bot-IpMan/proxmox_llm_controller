@@ -69,6 +69,30 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+              }
+            }
+          },
+          "404": {
+            "description": "Запитаний контейнер або вузол не знайдено.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+              }
+            }
+          },
+          "500": {
+            "description": "Внутрішня помилка контролера або Proxmox.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/InternalServerError"}
+              }
+            }
           }
         }
       }
@@ -90,6 +114,30 @@
                     "version": { "type": "string" }
                   }
                 }
+              }
+            }
+          },
+          "400": {
+            "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+              }
+            }
+          },
+          "404": {
+            "description": "Запитаний контейнер або вузол не знайдено.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+              }
+            }
+          },
+          "500": {
+            "description": "Внутрішня помилка контролера або Proxmox.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/InternalServerError"}
               }
             }
           }
@@ -123,6 +171,30 @@
                   "repoid": "8a0f1d3c",
                   "name": "Proxmox Virtual Environment"
                 }
+              }
+            }
+          },
+          "400": {
+            "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+              }
+            }
+          },
+          "404": {
+            "description": "Запитаний контейнер або вузол не знайдено.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+              }
+            }
+          },
+          "500": {
+            "description": "Внутрішня помилка контролера або Proxmox.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/InternalServerError"}
               }
             }
           }
@@ -179,6 +251,30 @@
                     "ssl_fingerprint": "AA:BB:CC:DD"
                   }
                 ]
+              }
+            }
+          },
+          "400": {
+            "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+              }
+            }
+          },
+          "404": {
+            "description": "Запитаний контейнер або вузол не знайдено.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+              }
+            }
+          },
+          "500": {
+            "description": "Внутрішня помилка контролера або Proxmox.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/InternalServerError"}
               }
             }
           }
@@ -264,6 +360,30 @@
                 ]
               }
             }
+          },
+          "400": {
+            "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+              }
+            }
+          },
+          "404": {
+            "description": "Запитаний контейнер або вузол не знайдено.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+              }
+            }
+          },
+          "500": {
+            "description": "Внутрішня помилка контролера або Proxmox.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/InternalServerError"}
+              }
+            }
           }
         }
       }
@@ -326,6 +446,30 @@
                 ]
               }
             }
+          },
+          "400": {
+            "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+              }
+            }
+          },
+          "404": {
+            "description": "Запитаний контейнер або вузол не знайдено.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+              }
+            }
+          },
+          "500": {
+            "description": "Внутрішня помилка контролера або Proxmox.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/InternalServerError"}
+              }
+            }
           }
         }
       }
@@ -375,6 +519,30 @@
                     "task": { "type": "string", "description": "UPID завдання Proxmox" }
                   }
                 }
+              }
+            }
+          },
+          "400": {
+            "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+              }
+            }
+          },
+          "404": {
+            "description": "Запитаний контейнер або вузол не знайдено.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+              }
+            }
+          },
+          "500": {
+            "description": "Внутрішня помилка контролера або Proxmox.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/InternalServerError"}
               }
             }
           }
@@ -428,6 +596,30 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+              }
+            }
+          },
+          "404": {
+            "description": "Запитаний контейнер або вузол не знайдено.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+              }
+            }
+          },
+          "500": {
+            "description": "Внутрішня помилка контролера або Proxmox.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/InternalServerError"}
+              }
+            }
           }
         }
       }
@@ -479,6 +671,30 @@
                     "node": { "type": "string" }
                   }
                 }
+              }
+            }
+          },
+          "400": {
+            "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+              }
+            }
+          },
+          "404": {
+            "description": "Запитаний контейнер або вузол не знайдено.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+              }
+            }
+          },
+          "500": {
+            "description": "Внутрішня помилка контролера або Proxmox.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/InternalServerError"}
               }
             }
           }
@@ -555,6 +771,30 @@
                     "stderr": { "type": "string", "description": "Standard error" }
                   }
                 }
+              }
+            }
+          },
+          "400": {
+            "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+              }
+            }
+          },
+          "404": {
+            "description": "Запитаний контейнер або вузол не знайдено.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+              }
+            }
+          },
+          "500": {
+            "description": "Внутрішня помилка контролера або Proxmox.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/InternalServerError"}
               }
             }
           }
@@ -634,6 +874,30 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+              }
+            }
+          },
+          "404": {
+            "description": "Запитаний контейнер або вузол не знайдено.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+              }
+            }
+          },
+          "500": {
+            "description": "Внутрішня помилка контролера або Proxmox.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/InternalServerError"}
+              }
+            }
           }
         }
       }
@@ -672,6 +936,30 @@
                     "stderr": { "type": "string", "description": "Стандартний потік помилок" }
                   }
                 }
+              }
+            }
+          },
+          "400": {
+            "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+              }
+            }
+          },
+          "404": {
+            "description": "Запитаний контейнер або вузол не знайдено.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+              }
+            }
+          },
+          "500": {
+            "description": "Внутрішня помилка контролера або Proxmox.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/InternalServerError"}
               }
             }
           }
@@ -717,6 +1005,30 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+              }
+            }
+          },
+          "404": {
+            "description": "Запитаний контейнер або вузол не знайдено.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+              }
+            }
+          },
+          "500": {
+            "description": "Внутрішня помилка контролера або Proxmox.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/InternalServerError"}
+              }
+            }
           }
         }
       }
@@ -759,6 +1071,30 @@
                     "used": { "type": "string", "description": "Який браузер/інструмент було використано" }
                   }
                 }
+              }
+            }
+          },
+          "400": {
+            "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+              }
+            }
+          },
+          "404": {
+            "description": "Запитаний контейнер або вузол не знайдено.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+              }
+            }
+          },
+          "500": {
+            "description": "Внутрішня помилка контролера або Proxmox.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/InternalServerError"}
               }
             }
           }
@@ -1023,6 +1359,33 @@
           }
         },
         "required": ["url"]
+      },
+      "BadRequestError": {
+        "type": "object",
+        "description": "Помилка вхідних параметрів або тіла запиту.",
+        "required": ["detail"],
+        "properties": {
+          "detail": {"type": "string", "description": "Пояснення, які параметри запиту невалідні або відсутні."}
+        },
+        "example": {"detail": "Invalid vmid: must be between 100 and 999."}
+      },
+      "NotFoundError": {
+        "type": "object",
+        "description": "Ресурс (вузол чи контейнер) не знайдено.",
+        "required": ["detail"],
+        "properties": {
+          "detail": {"type": "string", "description": "Описує, який ресурс не вдалося знайти."}
+        },
+        "example": {"detail": "LXC container 123 not found on node pve."}
+      },
+      "InternalServerError": {
+        "type": "object",
+        "description": "Внутрішня помилка контролера або Proxmox.",
+        "required": ["detail"],
+        "properties": {
+          "detail": {"type": "string", "description": "Описує причину внутрішньої помилки."}
+        },
+        "example": {"detail": "Proxmox API call failed: connection refused."}
       }
     }
   }
