@@ -6,13 +6,13 @@ import subprocess
 import socket
 from io import StringIO
 from functools import lru_cache
-from typing import Optional, Dict, Any, List, Tuple, Literal
+from typing import Optional, Dict, Any, List, Tuple, Literal, ClassVar
 import re
 from string import Template
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, field_validator, IPvAnyNetwork, IPvAnyAddress
+from pydantic import BaseModel, Field, field_validator, model_validator, IPvAnyNetwork, IPvAnyAddress
 from proxmoxer import ProxmoxAPI
 import paramiko
 
@@ -106,31 +106,83 @@ class CreateLXCReq(BaseModel):
 
 class LXCExecSpec(BaseModel):
     vmid: int
-    cmd: str
+    cmd: Optional[str] = None
+    commands: Optional[List[str]] = None
+
+    _allowed_executables: ClassVar[Tuple[str, ...]] = (
+        "systemctl", "service", "journalctl", "ls", "cat", "tail",
+        "head", "df", "du", "ps", "kill", "docker", "git",
+        "curl", "wget", "python3", "pip", "bash", "sh",
+        "apt", "apt-get"
+    )
+
+    @classmethod
+    def _validate_command(cls, raw: str) -> str:
+        command = raw.strip()
+        if not command:
+            raise ValueError("Command cannot be empty")
+        if any(c in command for c in [";", "|", "`"]):
+            raise ValueError("Shell metacharacters are not allowed")
+        if re.search(r"(?<!&)&(?!&)", command):
+            raise ValueError("Shell metacharacters are not allowed")
+
+        try:
+            tokens = shlex.split(command)
+        except ValueError as e:
+            raise ValueError(f"Invalid command: {e}") from e
+
+        if not tokens:
+            raise ValueError("Command cannot be empty")
+
+        segments: List[List[str]] = []
+        current: List[str] = []
+        for token in tokens:
+            if "&&" in token and token != "&&":
+                raise ValueError("Use spaces around '&&' to chain commands")
+            if token == "&&":
+                if not current:
+                    raise ValueError("Command segment cannot be empty before '&&'")
+                segments.append(current)
+                current = []
+                continue
+            current.append(token)
+
+        if not current:
+            raise ValueError("Command cannot end with '&&'")
+
+        segments.append(current)
+
+        for segment in segments:
+            executable = os.path.basename(segment[0])
+            if executable not in cls._allowed_executables:
+                allowed = list(cls._allowed_executables)
+                raise ValueError(f"Command not allowed. Allowed executables: {allowed}")
+
+        return command
 
     @field_validator("cmd")
     @classmethod
-    def allowlist(cls, v: str):
-        v = v.lstrip()
-        forbidden = [";", "&&", "|", "`", "&"]
-        if any(x in v for x in forbidden):
-            raise ValueError("Shell metacharacters are not allowed")
-        try:
-            parts = shlex.split(v)
-        except ValueError as e:
-            raise ValueError(f"Invalid command: {e}") from e
-        if not parts:
-            raise ValueError("Command cannot be empty")
-        allowed = [
-            "systemctl", "service", "journalctl", "ls", "cat", "tail",
-            "head", "df", "du", "ps", "kill", "docker", "git",
-            "curl", "wget", "python3", "pip", "bash", "sh",
-            "apt", "apt-get"
-        ]
-        executable = os.path.basename(parts[0])
-        if executable not in allowed:
-            raise ValueError(f"Command not allowed. Allowed executables: {allowed}")
-        return v
+    def validate_cmd(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        return cls._validate_command(v)
+
+    @field_validator("commands")
+    @classmethod
+    def validate_commands(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        if v is None:
+            return None
+        if not v:
+            raise ValueError("commands cannot be empty")
+        return [cls._validate_command(cmd) for cmd in v]
+
+    @model_validator(mode="after")
+    def check_payload(self):
+        if not self.cmd and not self.commands:
+            raise ValueError("Either 'cmd' or 'commands' must be provided")
+        if self.cmd and self.commands:
+            raise ValueError("Use either 'cmd' or 'commands', not both")
+        return self
 
 
 class DeploySpec(BaseModel):
@@ -729,7 +781,8 @@ def create_lxc(req: CreateLXCReq) -> Dict[str, Any]:
 def lxc_exec(spec: LXCExecSpec) -> Dict[str, Any]:
     host, user, key = _require_pve_ssh()
 
-    cmd = f"pct exec {spec.vmid} -- bash -lc {shlex.quote(spec.cmd)}"
+    command = spec.cmd if spec.cmd is not None else " && ".join(spec.commands or [])
+    cmd = f"pct exec {spec.vmid} -- bash -lc {shlex.quote(command)}"
     try:
         res = subprocess.run(["ssh", "-i", key, f"{user}@{host}", cmd],
                              capture_output=True, text=True, timeout=3600)
