@@ -1192,39 +1192,45 @@
       },
       "SSHSpec": {
         "type": "object",
+        "description": "Параметри SSH-з'єднання. Вкажіть один з методів автентифікації: password, key_path або key_data_b64. Якщо жоден спосіб не задано, контролер використає попередньо налаштований ключ (наприклад, з ENV чи /keys/pve_id_rsa).",
+        "anyOf": [
+          { "required": ["password"] },
+          { "required": ["key_path"] },
+          { "required": ["key_data_b64"] }
+        ],
         "properties": {
           "host": {
             "type": "string",
-            "description": "SSH host or user@host. Supports hostnames, IPv4/IPv6 literals (optionally in [addr] form), optional :port and ssh://user@host:port URIs. Якщо не задано, використовується DEFAULT_SSH_HOST або PVE_SSH_HOST.",
+            "description": "SSH host або user@host. Підтримуються DNS-імена, IPv4/IPv6 (у форматі [addr]), необов'язковий :port та URI ssh://user@host:port. Якщо не задано, використовується DEFAULT_SSH_HOST або PVE_SSH_HOST.",
             "example": "root@192.168.1.140:2222"
           },
           "user": {
             "type": "string",
             "default": "root",
-            "description": "SSH username. When the host field already contains user@..., that value wins. Якщо поле не задано, використовується DEFAULT_SSH_USER або PVE_SSH_USER (типово root)."
+            "description": "SSH-користувач. Коли host вже містить user@..., пріоритет має він. Якщо поле не задано, використовується DEFAULT_SSH_USER або PVE_SSH_USER (типово root)."
           },
           "port": {
             "type": "integer",
             "default": 22,
-            "description": "SSH port to use when the host field does not include one. Може бути заданий через DEFAULT_SSH_PORT або PVE_SSH_PORT."
+            "description": "SSH-порт для випадків, коли host не містить власного значення. Може бути заданий через DEFAULT_SSH_PORT або PVE_SSH_PORT."
           },
           "cmd": { "type": "string", "description": "Команда, яку потрібно виконати" },
           "key_path": {
             "type": "string",
-            "description": "Шлях до приватного ключа (наприклад, /keys/pve_id_rsa). Якщо не задано, використовується DEFAULT_SSH_KEY_PATH або PVE_SSH_KEY_PATH."
+            "description": "Шлях до приватного ключа на контролері (наприклад, /keys/pve_id_rsa). Якщо не задано, використовується DEFAULT_SSH_KEY_PATH/PVE_SSH_KEY_PATH або інший попередньо налаштований ключ."
           },
           "key_data_b64": {
             "type": "string",
-            "description": "Приватний ключ у форматі base64(OpenSSH). Може використовуватися замість key_path."
+            "description": "Приватний ключ у форматі base64(OpenSSH) для одноразового передавання. Якщо пропустити, контролер спробує використати попередньо налаштований ключ."
           },
           "password": {
             "type": "string",
-            "description": "Пароль SSH (альтернатива ключу)."
+            "description": "Пароль для SSH-автентифікації. Якщо пропустити та не вказано ключ, контролер спробує використати попередньо налаштований ключ."
           },
           "strict_host_key": {
             "type": "boolean",
             "default": false,
-            "description": "Чи вимагати сувору перевірку host key"
+            "description": "Чи вимагати сувору перевірку host key. За замовчуванням береться значення DEFAULT_SSH_STRICT_HOST_KEY."
           },
           "env": {
             "type": "object",
