@@ -12,13 +12,15 @@
 
    ```env
    PROXMOX_HOST=your-proxmox-host:8006
-   PROXMOX_USER=root@pam
-   PROXMOX_TOKEN_NAME=exampleToken
+   PROXMOX_USER=root@pam!WebUI
+   # PROXMOX_TOKEN_NAME=WebUI  # не обов'язково, автоматично з PROXMOX_USER
    PROXMOX_TOKEN_VALUE=superSecret
    PROXMOX_VERIFY_SSL=False
    ```
 
    > Щоб згенерувати API‑токен у Proxmox, відкрийте *Datacenter* → *Permissions* → *API Tokens*.
+   > Якщо в `PROXMOX_USER` вказано `root@pam!WebUI`, частина після `!` автоматично
+   > використовується як `PROXMOX_TOKEN_NAME`.
 
 3. Додайте приватний SSH‑ключ, який має доступ до вашого вузла Proxmox:
 

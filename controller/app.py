@@ -195,6 +195,39 @@ def _bool_env(name: str, default: bool = False) -> bool:
     return str(v).strip().lower() in ("1", "true", "yes", "on")
 
 
+def _resolve_proxmox_user(
+    raw_user: Optional[str], realm: str, raw_token_name: Optional[str]
+) -> Tuple[str, Optional[str]]:
+    """Normalize Proxmox user and token name values.
+
+    Supports the ``user@realm!token`` syntax that Proxmox uses for API tokens.
+    If a token name is embedded after ``!`` and ``PROXMOX_TOKEN_NAME`` is not
+    provided explicitly, the token name is derived automatically.
+    """
+
+    user = (raw_user or "").strip()
+    token_name_env = (raw_token_name or "").strip() or None
+
+    if not user:
+        user = f"root@{realm}"
+
+    embedded_token: Optional[str] = None
+    if "!" in user:
+        user_part, token_part = user.split("!", 1)
+        user = user_part.strip()
+        embedded_token = token_part.strip() or None
+        if not user:
+            raise RuntimeError(
+                "Invalid PROXMOX_USER format: user part before '!' is empty."
+            )
+
+    token_name = token_name_env or embedded_token
+    if embedded_token and not token_name_env:
+        log.info("Derived PROXMOX_TOKEN_NAME='%s' from PROXMOX_USER", token_name)
+
+    return user, token_name
+
+
 @lru_cache(maxsize=1)
 def get_proxmox() -> ProxmoxAPI:
     """
@@ -202,16 +235,17 @@ def get_proxmox() -> ProxmoxAPI:
     ENV:
       PROXMOX_HOST=192.168.1.140
       PROXMOX_PORT=8006
-      PROXMOX_USER=root@pam
+      PROXMOX_USER=root@pam!WebUI
       PROXMOX_TOKEN_NAME=...
       PROXMOX_TOKEN_VALUE=...
       PROXMOX_PASSWORD=... (не бажано)
       PROXMOX_VERIFY_SSL=false | VERIFY_SSL=false
     """
     host = os.getenv("PROXMOX_HOST")
-    user = os.getenv("PROXMOX_USER")  # типово "root@pam"
     realm = os.getenv("PROXMOX_REALM", "pam")
-    token_name = os.getenv("PROXMOX_TOKEN_NAME")
+    user, token_name = _resolve_proxmox_user(
+        os.getenv("PROXMOX_USER"), realm, os.getenv("PROXMOX_TOKEN_NAME")
+    )
     token_value = os.getenv("PROXMOX_TOKEN_VALUE")
     password = os.getenv("PROXMOX_PASSWORD")
     verify_ssl = _bool_env("PROXMOX_VERIFY_SSL", _bool_env("VERIFY_SSL", False))
@@ -219,8 +253,6 @@ def get_proxmox() -> ProxmoxAPI:
 
     if not host:
         raise RuntimeError("Missing PROXMOX_HOST")
-    if not user:
-        user = f"root@{realm}"
 
     kwargs: Dict[str, Any] = {
         "user": user,
