@@ -308,9 +308,21 @@
                 "type": "object",
                 "properties": {
                   "vmid": { "type": "integer", "description": "ID контейнера" },
-                  "cmd": { "type": "string", "description": "Команда для виконання" }
+                  "cmd": {
+                    "type": "string",
+                    "description": "Команда для виконання (можна ланцюжити декілька через '&&')"
+                  },
+                  "commands": {
+                    "type": "array",
+                    "description": "Альтернатива до 'cmd': список команд, які виконуються послідовно",
+                    "items": { "type": "string" }
+                  }
                 },
-                "required": ["vmid", "cmd"]
+                "required": ["vmid"],
+                "anyOf": [
+                  { "required": ["cmd"] },
+                  { "required": ["commands"] }
+                ]
               },
               "examples": {
                 "list_files": {
@@ -318,6 +330,15 @@
                 },
                 "install_package": {
                   "value": { "vmid": 100, "cmd": "apt-get update && apt-get install -y nginx" }
+                },
+                "install_multiple": {
+                  "value": {
+                    "vmid": 100,
+                    "commands": [
+                      "apt-get update",
+                      "apt-get install -y python3-pip"
+                    ]
+                  }
                 },
                 "check_service": {
                   "value": { "vmid": 100, "cmd": "systemctl status nginx" }

@@ -32,6 +32,7 @@ This cheat sheet helps you translate natural-language tasks into concrete contro
 
 ## Software installation & configuration
 - **Install a package** – `POST /lxc/exec` with `"cmd": "apt-get update && apt-get install -y nginx"` (chain commands inside `bash -lc`).
+- **Run multiple steps** – alternatively, pass `"commands": ["apt-get update", "apt-get install -y nginx"]` to `/lxc/exec` and they will execute послідовно.
 - **Install Docker** – `POST /lxc/exec` and run either `apt-get update && apt-get install -y docker.io` or pipe the official convenience script `curl -fsSL https://get.docker.com | sh` (wrap commands with `bash -lc`).
 - **Write configuration files** – use `cat <<'EOF' > /path` inside `/lxc/exec` or clone repositories with `/deploy`.
 - **Enable and start services** – `systemctl enable --now <service>` via `/lxc/exec`.
