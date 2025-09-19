@@ -12,7 +12,7 @@ from string import Template
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, field_validator, model_validator, IPvAnyNetwork, IPvAnyAddress
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator, IPvAnyNetwork, IPvAnyAddress
 from proxmoxer import ProxmoxAPI
 import paramiko
 
@@ -202,16 +202,78 @@ class DeploySpec(BaseModel):
 
 
 class SSHSpec(BaseModel):
-    host: Optional[str] = None
-    user: Optional[str] = None
-    port: Optional[int] = None
+    model_config = ConfigDict(
+        json_schema_extra={
+            "description": (
+                "Параметри SSH-з'єднання. Вкажіть один з методів автентифікації: "
+                "password, key_path або key_data_b64. Якщо жоден спосіб не задано, "
+                "контролер використає попередньо налаштований ключ (наприклад, з ENV "
+                "чи /keys/pve_id_rsa)."
+            ),
+            "anyOf": [
+                {"required": ["password"]},
+                {"required": ["key_path"]},
+                {"required": ["key_data_b64"]},
+            ],
+        }
+    )
+
+    host: Optional[str] = Field(
+        default=None,
+        description=(
+            "SSH host або user@host. Підтримуються DNS-імена, IPv4/IPv6 (у форматі [addr]), "
+            "необов'язковий :port та URI ssh://user@host:port. Якщо не задано, береться з ENV "
+            "DEFAULT_SSH_HOST/PVE_SSH_HOST."
+        ),
+    )
+    user: Optional[str] = Field(
+        default=None,
+        description=(
+            "SSH-користувач. Коли host вже містить user@..., пріоритет має він. Якщо поле не задано, "
+            "використовується DEFAULT_SSH_USER або PVE_SSH_USER (типово root)."
+        ),
+    )
+    port: Optional[int] = Field(
+        default=None,
+        description=(
+            "SSH-порт для випадків, коли host не містить власного значення. Якщо не задано, "
+            "використовується 22 або значення з ENV DEFAULT_SSH_PORT/PVE_SSH_PORT."
+        ),
+    )
     cmd: str
-    key_path: Optional[str] = None
-    key_data_b64: Optional[str] = None  # base64(OpenSSH private key)
-    password: Optional[str] = None
-    strict_host_key: Optional[bool] = None
-    env: Optional[Dict[str, str]] = None
-    cwd: Optional[str] = None
+    key_path: Optional[str] = Field(
+        default=None,
+        description=(
+            "Шлях до приватного ключа на контролері (наприклад, /keys/pve_id_rsa). Якщо пропустити, "
+            "використається DEFAULT_SSH_KEY_PATH/PVE_SSH_KEY_PATH або інший попередньо налаштований ключ."
+        ),
+    )
+    key_data_b64: Optional[str] = Field(
+        default=None,
+        description=(
+            "Base64(OpenSSH private key) для одноразового передавання ключа. "
+            "Якщо пропустити, контролер спробує використати попередньо налаштований ключ."
+        ),
+    )
+    password: Optional[str] = Field(
+        default=None,
+        description=(
+            "Пароль для SSH-автентифікації. Якщо пропустити та не вказано ключ, контролер спробує використати попередньо "
+            "налаштований ключ."
+        ),
+    )
+    strict_host_key: Optional[bool] = Field(
+        default=None,
+        description="Увімкнути перевірку ключа хоста (StrictHostKeyChecking). За замовчуванням значення з ENV DEFAULT_SSH_STRICT_HOST_KEY.",
+    )
+    env: Optional[Dict[str, str]] = Field(
+        default=None,
+        description="Додаткові змінні середовища, які потрібно експортувати перед виконанням команди.",
+    )
+    cwd: Optional[str] = Field(
+        default=None,
+        description="Робоча директорія на віддаленій машині, в якій виконуватиметься команда.",
+    )
 
 
 class AppLaunchSpec(BaseModel):
