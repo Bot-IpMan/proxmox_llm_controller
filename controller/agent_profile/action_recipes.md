@@ -32,6 +32,7 @@ This cheat sheet helps you translate natural-language tasks into concrete contro
 
 ## Software installation & configuration
 - **Install a package** – `POST /lxc/exec` with `"cmd": "apt-get update && apt-get install -y nginx"` (chain commands inside `bash -lc`).
+- **Install Docker** – `POST /lxc/exec` and run either `apt-get update && apt-get install -y docker.io` or pipe the official convenience script `curl -fsSL https://get.docker.com | sh` (wrap commands with `bash -lc`).
 - **Write configuration files** – use `cat <<'EOF' > /path` inside `/lxc/exec` or clone repositories with `/deploy`.
 - **Enable and start services** – `systemctl enable --now <service>` via `/lxc/exec`.
 
@@ -50,6 +51,17 @@ This cheat sheet helps you translate natural-language tasks into concrete contro
   }
   ```
   Adjust `setup`/`commands` arrays depending on project requirements.
+
+## Advanced automation examples
+- **Price scraping workflow**
+  1. Create a fresh Debian container with `/lxc` and ensure outbound network access.
+  2. Install dependencies via `/lxc/exec` using `pip install requests beautifulsoup4` (install `python3-pip` first if needed).
+  3. Upload or cat a Python script that fetches target pages and parses prices with BeautifulSoup.
+  4. Execute the script through `/deploy` commands or a direct `/lxc/exec` call like `python3 /opt/scraper.py`.
+- **Bring up a full development stack**
+  1. Provision three containers (e.g., `frontend`, `backend`, `database`) with `/lxc`, assigning them to the same bridge or VLAN for inter-container networking.
+  2. Use `/lxc/exec` to install Docker and Docker Compose in each container (or a central orchestrator), configuring environment variables and volumes.
+  3. Deploy a shared `docker-compose.yml` that defines services for the frontend, backend, and database, and launch it with `docker compose up -d` from the designated container.
 
 ## Diagnostics
 - **Check container status** – `GET /lxc` and inspect `status`/`cpu` fields.
