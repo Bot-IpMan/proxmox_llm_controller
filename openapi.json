@@ -58,7 +58,11 @@
                     "network": "192.168.1.0/24",
                     "gateway": "192.168.1.1",
                     "bridge": "vmbr0",
-                    "storage": "local-lvm"
+                    "storage": "local-lvm",
+                    "templates": [
+                      "local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst",
+                      "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst"
+                    ]
                   },
                   "system_prompt": "...",
                   "quick_reference": "..."
@@ -92,9 +96,43 @@
         }
       }
     },
+    "/version": {
+      "get": {
+        "summary": "Версія Proxmox VE",
+        "description": "Повертає інформацію про встановлену версію Proxmox VE так само, як ``/api2/json/version``.",
+        "operationId": "getProxmoxVersion",
+        "tags": ["Proxmox"],
+        "responses": {
+          "200": {
+            "description": "Версія Proxmox VE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": { "type": "string", "description": "Повна версія (наприклад, 8.1-2)" },
+                    "release": { "type": "string", "description": "Основний реліз" },
+                    "repoid": { "type": "string", "description": "Ідентифікатор репозиторію" },
+                    "name": { "type": "string", "description": "Назва продукту" }
+                  },
+                  "additionalProperties": true
+                },
+                "example": {
+                  "version": "8.1-2",
+                  "release": "8.1",
+                  "repoid": "8a0f1d3c",
+                  "name": "Proxmox Virtual Environment"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/nodes": {
       "get": {
         "summary": "Список Proxmox вузлів",
+        "description": "Повертає ``nodes.get()`` з Proxmox API. Відповідь містить детальну інформацію про кожен вузол.",
         "operationId": "listNodes",
         "tags": ["Proxmox"],
         "responses": {
@@ -107,14 +145,40 @@
                   "items": {
                     "type": "object",
                     "properties": {
-                      "node": { "type": "string" },
-                      "status": { "type": "string" },
-                      "cpu": { "type": "number" },
-                      "mem": { "type": "integer" },
-                      "disk": { "type": "integer" }
-                    }
+                      "node": { "type": "string", "description": "Назва вузла" },
+                      "status": { "type": "string", "description": "online/offline" },
+                      "cpu": { "type": "number", "description": "Поточне використання CPU (0-1)" },
+                      "maxcpu": { "type": "integer", "description": "Кількість логічних CPU" },
+                      "mem": { "type": "integer", "description": "Використана пам'ять у байтах" },
+                      "maxmem": { "type": "integer", "description": "Доступна пам'ять у байтах" },
+                      "disk": { "type": "integer", "description": "Використаний диск у байтах" },
+                      "maxdisk": { "type": "integer", "description": "Доступний диск у байтах" },
+                      "uptime": { "type": "integer", "description": "Час роботи у секундах" },
+                      "level": { "type": "string" },
+                      "type": { "type": "string" },
+                      "id": { "type": "string" },
+                      "ssl_fingerprint": { "type": "string" }
+                    },
+                    "additionalProperties": true
                   }
-                }
+                },
+                "example": [
+                  {
+                    "node": "pve",
+                    "status": "online",
+                    "cpu": 0.12,
+                    "maxcpu": 16,
+                    "mem": 34359738368,
+                    "maxmem": 68719476736,
+                    "disk": 21474836480,
+                    "maxdisk": 85899345920,
+                    "uptime": 86400,
+                    "level": "",
+                    "type": "node",
+                    "id": "node/pve",
+                    "ssl_fingerprint": "AA:BB:CC:DD"
+                  }
+                ]
               }
             }
           }
@@ -124,6 +188,7 @@
     "/lxc": {
       "get": {
         "summary": "Список LXC контейнерів",
+        "description": "Повертає ``nodes(node).lxc.get()`` з Proxmox API.",
         "operationId": "listLXC",
         "tags": ["LXC"],
         "parameters": [
@@ -132,7 +197,7 @@
             "in": "query",
             "required": false,
             "schema": { "type": "string" },
-            "description": "Назва вузла (наприклад: pve)"
+            "description": "Назва вузла (наприклад, pve). Якщо не задано — використовується перший вузол, повернений Proxmox."
           }
         ],
         "responses": {
@@ -145,18 +210,110 @@
                   "items": {
                     "type": "object",
                     "properties": {
-                      "vmid": { "type": "integer" },
+                      "vmid": { "type": "integer", "description": "ID контейнера" },
                       "name": { "type": "string" },
-                      "status": { "type": "string", "enum": ["running", "stopped"] },
-                      "cpu": { "type": "number" },
-                      "mem": { "type": "integer" },
-                      "disk": { "type": "integer" }
-                    }
+                      "status": { "type": "string" },
+                      "node": { "type": "string" },
+                      "type": { "type": "string" },
+                      "uptime": { "type": "integer", "description": "Час роботи у секундах" },
+                      "cpu": { "type": "number", "description": "Частка використання CPU (0-1)" },
+                      "cpus": { "type": "integer", "description": "Виділені CPU" },
+                      "maxcpu": { "type": "integer" },
+                      "mem": { "type": "integer", "description": "Використана пам'ять у байтах" },
+                      "maxmem": { "type": "integer", "description": "Виділена пам'ять у байтах" },
+                      "disk": { "type": "integer", "description": "Використаний диск у байтах" },
+                      "maxdisk": { "type": "integer" },
+                      "diskread": { "type": "integer" },
+                      "diskwrite": { "type": "integer" },
+                      "netin": { "type": "integer" },
+                      "netout": { "type": "integer" },
+                      "tags": { "type": "string" },
+                      "lock": { "type": "string" },
+                      "template": { "type": "integer", "description": "1 якщо контейнер є шаблоном" }
+                    },
+                    "additionalProperties": true
                   }
                 },
                 "example": [
-                  { "vmid": 100, "name": "webserver", "status": "running", "cpu": 0.5, "mem": 512000000 },
-                  { "vmid": 101, "name": "database", "status": "stopped", "cpu": 0, "mem": 0 }
+                  {
+                    "vmid": 100,
+                    "name": "webserver",
+                    "status": "running",
+                    "node": "pve",
+                    "type": "lxc",
+                    "uptime": 5400,
+                    "cpu": 0.12,
+                    "cpus": 2,
+                    "maxcpu": 2,
+                    "mem": 536870912,
+                    "maxmem": 2147483648,
+                    "disk": 3221225472,
+                    "maxdisk": 17179869184,
+                    "diskread": 1048576,
+                    "diskwrite": 524288,
+                    "netin": 1048576,
+                    "netout": 2097152,
+                    "tags": "prod,web",
+                    "template": 0
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lxc-list": {
+      "get": {
+        "summary": "Список LXC через pct list",
+        "description": "Виконує ``pct list --output-format json`` на Proxmox-хості через SSH. Потрібні змінні середовища ``PVE_SSH_HOST`` та ``PVE_SSH_USER``.",
+        "operationId": "listLXCViaSSH",
+        "tags": ["LXC"],
+        "responses": {
+          "200": {
+            "description": "Список контейнерів з pct list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "vmid": { "type": "integer" },
+                      "status": { "type": "string" },
+                      "node": { "type": "string" },
+                      "name": { "type": "string" },
+                      "type": { "type": "string" },
+                      "uptime": { "type": "integer" },
+                      "cpu": { "type": "number" },
+                      "cpus": { "type": "integer" },
+                      "mem": { "type": "integer" },
+                      "disk": { "type": "integer" },
+                      "diskread": { "type": "integer" },
+                      "diskwrite": { "type": "integer" },
+                      "netin": { "type": "integer" },
+                      "netout": { "type": "integer" }
+                    },
+                    "additionalProperties": true
+                  }
+                },
+                "example": [
+                  {
+                    "vmid": 101,
+                    "status": "stopped",
+                    "node": "pve",
+                    "name": "staging-api",
+                    "type": "lxc",
+                    "uptime": 0,
+                    "cpu": 0,
+                    "cpus": 2,
+                    "mem": 0,
+                    "disk": 10737418240,
+                    "diskread": 0,
+                    "diskwrite": 0,
+                    "netin": 0,
+                    "netout": 0
+                  }
                 ]
               }
             }
@@ -201,7 +358,7 @@
                   "type": "object",
                   "properties": {
                     "ok": { "type": "boolean" },
-                    "task": { "type": "string" }
+                    "task": { "type": "string", "description": "UPID завдання Proxmox" }
                   }
                 }
               }
@@ -241,7 +398,18 @@
         },
         "responses": {
           "200": {
-            "description": "Контейнер зупинено"
+            "description": "Контейнер зупинено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": { "type": "boolean" },
+                    "task": { "type": "string", "description": "UPID завдання Proxmox" }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -284,7 +452,7 @@
                   "type": "object",
                   "properties": {
                     "created": { "type": "boolean" },
-                    "task": { "type": "string" },
+                    "task": { "type": "string", "description": "UPID завдання Proxmox" },
                     "vmid": { "type": "integer" },
                     "node": { "type": "string" }
                   }
@@ -310,11 +478,11 @@
                   "vmid": { "type": "integer", "description": "ID контейнера" },
                   "cmd": {
                     "type": "string",
-                    "description": "Команда для виконання (можна ланцюжити декілька через '&&')"
+                    "description": "Команда для виконання (можна ланцюжити через '&&'). Дозволені лише безпечні утиліти: systemctl, service, journalctl, ls, cat, tail, head, df, du, ps, kill, docker, git, curl, wget, python3, pip, bash, sh, apt, apt-get. Символи ;, |, ` та поодинокий & заборонені."
                   },
                   "commands": {
                     "type": "array",
-                    "description": "Альтернатива до 'cmd': список команд, які виконуються послідовно",
+                    "description": "Альтернатива до 'cmd': список команд, які виконуються послідовно з тими самими обмеженнями, що й для 'cmd'",
                     "items": { "type": "string" }
                   }
                 },
@@ -428,10 +596,10 @@
                       "items": {
                         "type": "object",
                         "properties": {
-                          "cmd": { "type": "string" },
-                          "rc": { "type": "integer" },
-                          "stdout": { "type": "string" },
-                          "stderr": { "type": "string" }
+                          "cmd": { "type": "string", "description": "Команда, що виконувалась" },
+                          "rc": { "type": "integer", "description": "Код завершення" },
+                          "stdout": { "type": "string", "description": "Стандартний вивід" },
+                          "stderr": { "type": "string", "description": "Стандартний потік помилок" }
                         }
                       }
                     }
@@ -466,7 +634,62 @@
         },
         "responses": {
           "200": {
-            "description": "Результат виконання"
+            "description": "Результат виконання",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rc": { "type": "integer", "description": "Код завершення" },
+                    "stdout": { "type": "string", "description": "Стандартний вивід" },
+                    "stderr": { "type": "string", "description": "Стандартний потік помилок" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/apps/launch": {
+      "post": {
+        "summary": "Запустити програму на віддаленому сервері",
+        "description": "Виконує команду через SSH. За замовчуванням процес запускається у фоновому режимі з перенаправленням виводу у ``/tmp/<program>.log``.",
+        "operationId": "launchRemoteApp",
+        "tags": ["Apps"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppLaunchSpec"
+              },
+              "example": {
+                "host": "192.168.1.120",
+                "user": "devops",
+                "program": "code",
+                "args": ["/opt/project"],
+                "background": true,
+                "display": ":0"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Результат запуску",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rc": { "type": "integer", "description": "Код завершення" },
+                    "stdout": { "type": "string", "description": "Стандартний вивід (у фоновому режимі містить PID процесу)" },
+                    "stderr": { "type": "string", "description": "Стандартний потік помилок" }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -474,6 +697,7 @@
     "/browser/open": {
       "post": {
         "summary": "Відкрити URL в браузері на віддаленому сервері",
+        "description": "Запускає браузер через SSH. У headless-режимі шукає перший доступний двійковий файл із списку ``browser_cmds`` та виконує його з параметрами (може робити скріншот або PDF). У GUI-режимі намагається використати ``xdg-open`` або Firefox/Chrome.",
         "operationId": "browserOpen",
         "tags": ["Browser"],
         "requestBody": {
@@ -496,7 +720,20 @@
         },
         "responses": {
           "200": {
-            "description": "Браузер відкрито"
+            "description": "Браузер відкрито",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rc": { "type": "integer" },
+                    "stdout": { "type": "string", "description": "Стандартний вивід команди браузера" },
+                    "stderr": { "type": "string", "description": "Стандартний потік помилок" },
+                    "used": { "type": "string", "description": "Який браузер/інструмент було використано" }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -520,7 +757,11 @@
           "ssh_public_key": { "type": "string", "description": "SSH public key for root" },
           "password": { "type": "string", "description": "Root password" },
           "unprivileged": { "type": "boolean", "default": true },
-          "features": { "type": "object", "additionalProperties": { "type": "integer" } },
+          "features": {
+            "type": "object",
+            "description": "Додаткові прапорці pct (наприклад, {\"nesting\": 1, \"keyctl\": 1})",
+            "additionalProperties": { "type": "integer" }
+          },
           "ostemplate": { "type": "string", "description": "Template path" },
           "start": { "type": "boolean", "default": true, "description": "Start after creation" }
         },
@@ -528,19 +769,30 @@
       },
       "DeploySpec": {
         "type": "object",
+        "description": "Кроки деплою, що виконуються всередині контейнера через ``pct exec``. Спершу запускаються команди зі списку ``setup``, після чого виконується ``commands``. Шаблони ``{{repo_url}}`` та ``{{workdir}}`` підставляються автоматично.",
         "properties": {
-          "target_vmid": { "type": "integer" },
-          "repo_url": { "type": "string" },
-          "workdir": { "type": "string", "default": "/opt/app" },
+          "target_vmid": { "type": "integer", "description": "ID LXC контейнера, у який деплоїмо" },
+          "repo_url": { "type": "string", "description": "URL Git репозиторію" },
+          "workdir": { "type": "string", "default": "/opt/app", "description": "Каталог у контейнері для коду" },
           "setup": {
             "type": "array",
             "items": { "type": "string" },
-            "description": "Setup commands"
+            "description": "Команди підготовки (встановлення пакетів, налаштування оточення).",
+            "default": [
+              "apt-get update",
+              "apt-get install -y git curl python3 python3-venv"
+            ]
           },
           "commands": {
             "type": "array",
             "items": { "type": "string" },
-            "description": "Deploy commands"
+            "description": "Основні кроки деплою. Підтримують шаблони ``{{repo_url}}`` та ``{{workdir}}``.",
+            "default": [
+              "git clone {{repo_url}} {{workdir}} || (rm -rf {{workdir}} && git clone {{repo_url}} {{workdir}})",
+              "cd {{workdir}} && if [ -f requirements.txt ]; then python3 -m venv .venv && . .venv/bin/activate && pip install -U pip -r requirements.txt; fi",
+              "cd {{workdir}} && if [ -f docker-compose.yml ]; then curl -fsSL https://get.docker.com | sh && systemctl start docker && docker compose up -d; fi",
+              "cd {{workdir}} && if [ -f Makefile ]; then make run || true; fi"
+            ]
           }
         },
         "required": ["target_vmid", "repo_url"]
@@ -563,15 +815,94 @@
             "default": 22,
             "description": "SSH port to use when the host field does not include one. Може бути заданий через DEFAULT_SSH_PORT або PVE_SSH_PORT."
           },
-          "cmd": { "type": "string" },
-          "key_path": { "type": "string" },
-          "key_data_b64": { "type": "string" },
-          "password": { "type": "string" },
-          "strict_host_key": { "type": "boolean", "default": false },
-          "env": { "type": "object", "additionalProperties": { "type": "string" } },
-          "cwd": { "type": "string" }
+          "cmd": { "type": "string", "description": "Команда, яку потрібно виконати" },
+          "key_path": {
+            "type": "string",
+            "description": "Шлях до приватного ключа (наприклад, /keys/pve_id_rsa). Якщо не задано, використовується DEFAULT_SSH_KEY_PATH або PVE_SSH_KEY_PATH."
+          },
+          "key_data_b64": {
+            "type": "string",
+            "description": "Приватний ключ у форматі base64(OpenSSH). Може використовуватися замість key_path."
+          },
+          "password": {
+            "type": "string",
+            "description": "Пароль SSH (альтернатива ключу)."
+          },
+          "strict_host_key": {
+            "type": "boolean",
+            "default": false,
+            "description": "Чи вимагати сувору перевірку host key"
+          },
+          "env": {
+            "type": "object",
+            "description": "Додаткові змінні середовища для команди",
+            "additionalProperties": { "type": "string" }
+          },
+          "cwd": { "type": "string", "description": "Каталог, у якому буде виконано команду" }
         },
         "required": ["cmd"]
+      },
+      "AppLaunchSpec": {
+        "type": "object",
+        "properties": {
+          "host": {
+            "type": "string",
+            "description": "SSH-хост. Якщо не задано, використовується DEFAULT_SSH_HOST або PVE_SSH_HOST."
+          },
+          "user": {
+            "type": "string",
+            "default": "root",
+            "description": "SSH-користувач"
+          },
+          "port": {
+            "type": "integer",
+            "default": 22,
+            "description": "SSH-порт"
+          },
+          "key_path": {
+            "type": "string",
+            "description": "Шлях до приватного ключа SSH"
+          },
+          "key_data_b64": {
+            "type": "string",
+            "description": "Приватний ключ у форматі base64(OpenSSH)"
+          },
+          "password": {
+            "type": "string",
+            "description": "Пароль SSH"
+          },
+          "strict_host_key": {
+            "type": "boolean",
+            "default": false,
+            "description": "Чи перевіряти host key"
+          },
+          "program": {
+            "type": "string",
+            "description": "Команда для запуску (наприклад, firefox, google-chrome, chromium, code, xterm, tmux, bash)"
+          },
+          "args": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Аргументи командного рядка",
+            "default": []
+          },
+          "env": {
+            "type": "object",
+            "description": "Додаткові змінні середовища",
+            "additionalProperties": { "type": "string" }
+          },
+          "cwd": { "type": "string", "description": "Каталог виконання" },
+          "background": {
+            "type": "boolean",
+            "default": true,
+            "description": "Якщо true, команда запускається через nohup у фоні з логом у /tmp/<program>.log"
+          },
+          "display": {
+            "type": "string",
+            "description": "DISPLAY для GUI (наприклад, :0)"
+          }
+        },
+        "required": ["program"]
       },
       "BrowserSpec": {
         "type": "object",
@@ -590,17 +921,49 @@
             "default": 22,
             "description": "SSH-порт. Якщо не задано, можна визначити через DEFAULT_SSH_PORT/PVE_SSH_PORT."
           },
+          "key_path": {
+            "type": "string",
+            "description": "Шлях до приватного ключа SSH"
+          },
+          "key_data_b64": {
+            "type": "string",
+            "description": "Приватний ключ у форматі base64(OpenSSH)"
+          },
+          "password": {
+            "type": "string",
+            "description": "SSH-пароль"
+          },
+          "strict_host_key": {
+            "type": "boolean",
+            "default": false,
+            "description": "Чи перевіряти host key"
+          },
           "action": { "type": "string", "enum": ["open", "screenshot", "pdf"], "default": "open" },
           "url": { "type": "string" },
-          "headless": { "type": "boolean", "default": true },
+          "headless": {
+            "type": "boolean",
+            "default": true,
+            "description": "Якщо true, запускає браузер у headless-режимі. Якщо false — намагається використати xdg-open/firefox/chrome на GUI."
+          },
           "browser_cmds": {
             "type": "array",
             "items": { "type": "string" },
             "default": ["google-chrome", "chromium-browser", "chromium"]
           },
-          "window_size": { "type": "string", "default": "1280,800" },
-          "output_path": { "type": "string" },
-          "extra_args": { "type": "array", "items": { "type": "string" } }
+          "window_size": { "type": "string", "default": "1280,800", "description": "Розмір вікна для headless режиму" },
+          "user_data_dir": {
+            "type": "string",
+            "description": "Каталог профілю браузера на віддаленій машині"
+          },
+          "output_path": {
+            "type": "string",
+            "description": "Шлях на віддаленій машині для збереження скріншоту або PDF"
+          },
+          "extra_args": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Додаткові аргументи командного рядка для браузера"
+          }
         },
         "required": ["url"]
       }
