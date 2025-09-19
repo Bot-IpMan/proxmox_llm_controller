@@ -16,6 +16,8 @@ from pydantic import BaseModel, Field, field_validator, IPvAnyNetwork, IPvAnyAdd
 from proxmoxer import ProxmoxAPI
 import paramiko
 
+from agent_profile import get_agent_profile
+
 # ─────────────────────────────────────────────
 # Логування
 # ─────────────────────────────────────────────
@@ -39,6 +41,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ─────────────────────────────────────────────
+# Agent profile metadata
+# ─────────────────────────────────────────────
+
+
+@app.get("/agent/profile")
+def agent_profile() -> Dict[str, Any]:
+    """Return the static configuration used to prime the LLM agent."""
+
+    try:
+        return get_agent_profile()
+    except Exception as exc:  # pragma: no cover - defensive guard
+        raise _http_500(f"Failed to load agent profile: {exc}") from exc
 
 # ─────────────────────────────────────────────
 # Моделі запитів

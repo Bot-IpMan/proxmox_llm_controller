@@ -88,6 +88,26 @@
 
 Локальна LLM, розгорнута через Ollama, може спілкуватися з FastAPI‑контролером і віддавати завдання (наприклад, створити контейнер) у вигляді JSON. Контролер виконує виклики до Proxmox API з допомогою `proxmoxer` й повертає результат у зручному форматі. Такий підхід дозволяє відокремити LLM від прямого root‑доступу на хості, реалізувати фільтрацію та логування, і легко розширювати функціональність.
 
+## LLM агент
+
+У каталозі [`controller/agent_profile`](controller/agent_profile) зібрані готові артефакти для запуску автономного агента:
+
+- `system_prompt.md` — базова інструкція для моделі з описом місії, правил автономності та доступних інструментів.
+- `action_recipes.md` — стислий довідник із прикладами запитів до контролера.
+- Python‑модуль `agent_profile` експонує метадані через ендпоінт `GET /agent/profile` (JSON містить промпт, довідник та дефолтні параметри інфраструктури).
+
+### Як підключити в OpenWebUI
+
+1. Запустіть стек `docker-compose up -d`.
+2. У OpenWebUI відкрийте **Tools → API Specifications** та додайте адресу `http://proxmox-controller:8000/openapi.json`.
+3. Створіть новий **Persona** і вставте текст із `controller/agent_profile/system_prompt.md` у поле *System Prompt*.
+4. За бажанням додайте `controller/agent_profile/action_recipes.md` як *Knowledge* або вбудуйте у prompt.
+5. Після цього модель розумітиме, що має повний доступ до контролера і може виконувати задачі автономно. Додаткову інформацію можна також отримати через `GET http://proxmox-controller:8000/agent/profile`.
+
+### Використання в інших фреймворках
+
+Ендпоінт `/agent/profile` повертає всі необхідні текстові ресурси, тож його можна підвантажувати в будь-який orchestration-пайплайн (OpenAI Assistants, Ollama API, LangChain тощо) і автоматично формувати системне повідомлення для агента.
+
 ## Dependency management
 
 Python dependencies for the controller reside in `controller/requirements.txt` and use compatible release specifiers (e.g., `fastapi~=0.111`). After modifying versions, reinstall the environment:

@@ -16,6 +16,59 @@
     }
   ],
   "paths": {
+    "/agent/profile": {
+      "get": {
+        "summary": "Профіль агента",
+        "description": "Повертає системний промпт, quick-reference та дефолтні параметри для LLM агента.",
+        "operationId": "getAgentProfile",
+        "tags": ["Agent"],
+        "responses": {
+          "200": {
+            "description": "Профіль агента",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {"type": "string"},
+                    "description": {"type": "string"},
+                    "version": {"type": "string"},
+                    "controller": {
+                      "type": "object",
+                      "properties": {
+                        "base_url": {"type": "string"},
+                        "openapi_url": {"type": "string"}
+                      }
+                    },
+                    "defaults": {"type": "object"},
+                    "system_prompt": {"type": "string"},
+                    "quick_reference": {"type": "string"}
+                  }
+                },
+                "example": {
+                  "name": "Proxmox Infrastructure Management Agent",
+                  "description": "Autonomous root-level operator for Proxmox VE controlled through the Universal LLM Controller API.",
+                  "version": "1.0.0",
+                  "controller": {
+                    "base_url": "http://proxmox-controller:8000",
+                    "openapi_url": "http://proxmox-controller:8000/openapi.json"
+                  },
+                  "defaults": {
+                    "vmid_range": "100-999",
+                    "network": "192.168.1.0/24",
+                    "gateway": "192.168.1.1",
+                    "bridge": "vmbr0",
+                    "storage": "local-lvm"
+                  },
+                  "system_prompt": "...",
+                  "quick_reference": "..."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Перевірка статусу API",
