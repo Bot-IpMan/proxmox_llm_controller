@@ -102,6 +102,10 @@ BLISS_ADB_SERIAL=RQCT30W45KM
 ADB_BINARY=/platform-tools/adb
 ```
 
+> Щоб підключити лише BlissOS-ендпоінти як окремий інструмент OpenWebUI, імпортуйте файл [`openapi_bliss.json`](openapi_bliss.json)
+> у меню **Tools → API Specifications**. Він містить мінімальний OpenAPI-допис для `/bliss/adb/*` і зручний, якщо головний
+> контролер недоступний напряму або потрібно ізолювати adb-операції від решти API.
+
 API-ендпоінти:
 
 * **Перелік пристроїв** – `GET /bliss/adb/devices`
