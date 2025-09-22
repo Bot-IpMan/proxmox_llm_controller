@@ -155,6 +155,27 @@ POST /ssh/run
 }
 ```
 
+## BlissOS automation (ADB)
+- **Check connected devices** – `GET /bliss/adb/devices`
+- **Connect to BlissOS over TCP**
+  ```json
+  POST /bliss/adb/connect
+  {
+    "host": "192.168.56.101",
+    "port": 5555,
+    "force_disconnect": true
+  }
+  ```
+- **Run shell actions** – `POST /bliss/adb/shell {"cmd": "input tap 960 540"}` (use `commands` array for sequential steps, or set `"use_su": true` to wrap commands with `su -c`).
+- **Launch Android activities** –
+  ```json
+  POST /bliss/adb/command
+  {
+    "command": "shell am start -a android.intent.action.VIEW -d https://example.com"
+  }
+  ```
+- **Disconnect** – `POST /bliss/adb/disconnect {"all": true}` to drop all TCP sessions or pass a `host`/`port` pair to close a single target.
+
 ## Safety reminders
 - Confirm before deleting containers or altering cluster-wide configuration.
 - Avoid long-running background tasks without monitoring; tail logs or check exit codes.

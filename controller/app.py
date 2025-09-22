@@ -4,6 +4,7 @@ import shlex
 import logging
 import subprocess
 import socket
+import shutil
 from io import StringIO
 from functools import lru_cache
 from typing import Optional, Dict, Any, List, Tuple, Literal, ClassVar
@@ -31,7 +32,7 @@ log = logging.getLogger("universal-controller")
 # ─────────────────────────────────────────────
 # FastAPI
 # ─────────────────────────────────────────────
-app = FastAPI(title="Universal LLM Controller", version="2.0.0")
+app = FastAPI(title="Universal LLM Controller", version="2.1.0")
 
 # CORS (наприклад, якщо викликаєш з OpenWebUI з іншого походження)
 app.add_middleware(
@@ -310,6 +311,105 @@ class BrowserSpec(BaseModel):
     output_path: Optional[str] = Field(default=None, description="для screenshot/pdf на віддаленій машині")
     extra_args: List[str] = Field(default_factory=list)
 
+
+class BlissADBTarget(BaseModel):
+    serial: Optional[str] = Field(
+        default=None,
+        description=(
+            "ADB серійний номер або host:port. Якщо не задано, використовується "
+            "BLISS_ADB_SERIAL чи BLISS_ADB_ADDRESS."
+        ),
+    )
+    host: Optional[str] = Field(
+        default=None,
+        description=(
+            "IP/hostname BlissOS для TCP ADB. За замовчуванням BLISS_ADB_HOST. "
+            "Якщо serial не містить ':', host і port утворять host:port."
+        ),
+    )
+    port: Optional[int] = Field(
+        default=None,
+        ge=1,
+        le=65535,
+        description="TCP-порт ADB (типово 5555 або BLISS_ADB_PORT).",
+    )
+
+
+class BlissADBConnectSpec(BlissADBTarget):
+    force_disconnect: bool = Field(
+        default=False,
+        description="Спочатку виконати adb disconnect target перед підключенням.",
+    )
+    wait_for_device: bool = Field(
+        default=True,
+        description="Після успішного підключення чекати появи пристрою (adb wait-for-device).",
+    )
+    timeout: int = Field(
+        default=20,
+        ge=1,
+        le=600,
+        description="Таймаут adb connect у секундах.",
+    )
+
+
+class BlissADBDisconnectSpec(BlissADBTarget):
+    all: bool = Field(
+        default=False,
+        description="Якщо true — виконується adb disconnect --all. Інакше роз'єднання лише з target.",
+    )
+
+
+class BlissADBShellSpec(BlissADBTarget):
+    cmd: Optional[str] = Field(
+        default=None,
+        description="Одна команда для adb shell. При наявності commands ігнорується.",
+    )
+    commands: Optional[List[str]] = Field(
+        default=None,
+        description="Список послідовних команд для adb shell (виконуються окремо).",
+    )
+    timeout: int = Field(
+        default=60,
+        ge=1,
+        le=1800,
+        description="Максимальна тривалість кожної adb shell команди в секундах.",
+    )
+    use_su: bool = Field(
+        default=False,
+        description="Обгорнути команду в su -c '<cmd>' (якщо пристрій підтримує root).",
+    )
+
+    @model_validator(mode="after")
+    def _check_payload(self) -> "BlissADBShellSpec":
+        if not self.cmd and not self.commands:
+            raise ValueError("Either 'cmd' or 'commands' must be provided")
+        if self.cmd and self.commands:
+            raise ValueError("Use only one of 'cmd' or 'commands'")
+        return self
+
+
+class BlissADBCommandSpec(BlissADBTarget):
+    command: Optional[str] = Field(
+        default=None,
+        description="Повна adb команда без 'adb' (наприклад, 'install /tmp/app.apk').",
+    )
+    args: Optional[List[str]] = Field(
+        default=None,
+        description="Список аргументів для adb (наприклад, ['install', '/tmp/app.apk']).",
+    )
+    timeout: int = Field(
+        default=60,
+        ge=1,
+        le=1800,
+        description="Таймаут виконання adb-команди у секундах.",
+    )
+
+    @model_validator(mode="after")
+    def _check_command(self) -> "BlissADBCommandSpec":
+        if bool(self.command) == bool(self.args):
+            raise ValueError("Provide either 'command' or 'args'")
+        return self
+
 # ─────────────────────────────────────────────
 # Хелпери
 # ─────────────────────────────────────────────
@@ -536,6 +636,171 @@ def _resolve_ssh_connection(spec: BaseModel) -> Dict[str, Any]:
         "password": password,
         "strict_host_key": bool(strict_host_key),
     }
+
+
+# ─────────────────────────────────────────────
+# BlissOS ADB helpers
+# ─────────────────────────────────────────────
+class ADBError(RuntimeError):
+    def __init__(self, message: str, status_code: int = 400) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+
+
+def _parse_adb_port(value: Optional[Any]) -> Optional[int]:
+    if value is None:
+        return None
+    try:
+        port = int(value)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(400, f"Invalid BlissOS ADB port value: {value}") from exc
+    if not (1 <= port <= 65535):
+        raise HTTPException(400, "BlissOS ADB port must be between 1 and 65535")
+    return port
+
+
+def _resolve_bliss_port(spec: BaseModel) -> Optional[int]:
+    port_candidate = getattr(spec, "port", None)
+    if port_candidate is None:
+        env_val = _env_non_empty("BLISS_ADB_PORT")
+        if env_val is not None:
+            port_candidate = env_val
+    return _parse_adb_port(port_candidate)
+
+
+def _looks_like_hostname(value: str) -> bool:
+    return any(ch in value for ch in (".", ":"))
+
+
+def _resolve_bliss_serial(spec: BaseModel, require_tcp: bool = False) -> str:
+    port = _resolve_bliss_port(spec)
+    serial_candidate = _first_non_empty(
+        getattr(spec, "serial", None),
+        _env_non_empty("BLISS_ADB_SERIAL"),
+        _env_non_empty("BLISS_ADB_ADDRESS"),
+    )
+    host_candidate = _first_non_empty(
+        getattr(spec, "host", None),
+        _env_non_empty("BLISS_ADB_HOST"),
+    )
+
+    if serial_candidate:
+        serial_candidate = serial_candidate.strip()
+        if serial_candidate:
+            if ":" in serial_candidate:
+                return serial_candidate
+            if require_tcp and not _looks_like_hostname(serial_candidate):
+                if host_candidate:
+                    port_value = port or 5555
+                    return f"{host_candidate}:{port_value}"
+                raise HTTPException(
+                    400,
+                    "Provide BlissOS ADB host/port for TCP connection (serial lacks host:port)",
+                )
+            if _looks_like_hostname(serial_candidate):
+                port_value = port or 5555
+                return f"{serial_candidate}:{port_value}"
+            return serial_candidate
+
+    if host_candidate:
+        port_value = port or 5555
+        return f"{host_candidate}:{port_value}"
+
+    raise HTTPException(
+        400,
+        "BlissOS ADB target is not configured. Provide 'serial' or configure BLISS_ADB_SERIAL/BLISS_ADB_ADDRESS.",
+    )
+
+
+def _resolve_bliss_address(spec: BaseModel) -> str:
+    return _resolve_bliss_serial(spec, require_tcp=True)
+
+
+@lru_cache(maxsize=1)
+def _adb_executable() -> str:
+    candidate = _env_non_empty("ADB_BINARY") or "adb"
+    path = shutil.which(candidate)
+    if not path:
+        raise ADBError(
+            f"ADB binary '{candidate}' not found. Install Android platform-tools or set ADB_BINARY.",
+            status_code=500,
+        )
+    return path
+
+
+def _run_adb(args: List[str], timeout: int = 60) -> Tuple[int, str, str]:
+    binary = _adb_executable()
+    cmd = [binary, *args]
+    quoted = " ".join(shlex.quote(a) for a in args)
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        raise ADBError(
+            f"adb {quoted} timed out after {timeout} seconds",
+            status_code=504,
+        ) from exc
+    except FileNotFoundError as exc:
+        raise ADBError(
+            f"ADB binary '{binary}' is unavailable: {exc}",
+            status_code=500,
+        ) from exc
+    except Exception as exc:
+        raise ADBError(
+            f"Failed to run adb {quoted}: {exc}",
+            status_code=500,
+        ) from exc
+    return proc.returncode, proc.stdout, proc.stderr
+
+
+def _normalize_shell_commands(spec: BlissADBShellSpec) -> List[str]:
+    items = spec.commands if spec.commands is not None else [spec.cmd]
+    commands: List[str] = []
+    for item in items:
+        command = (item or "").strip()
+        if not command:
+            raise HTTPException(400, "ADB shell command cannot be empty")
+        commands.append(command)
+    return commands
+
+
+def _normalize_adb_args(spec: BlissADBCommandSpec) -> List[str]:
+    if spec.args is not None:
+        if not spec.args:
+            raise HTTPException(400, "adb args cannot be empty")
+        return spec.args
+    assert spec.command is not None  # validated by model
+    try:
+        parts = shlex.split(spec.command)
+    except ValueError as exc:
+        raise HTTPException(400, f"Invalid adb command: {exc}") from exc
+    if not parts:
+        raise HTTPException(400, "adb command cannot be empty")
+    return parts
+
+
+def _parse_adb_devices(output: str) -> List[Dict[str, Any]]:
+    devices: List[Dict[str, Any]] = []
+    for line in output.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.lower().startswith("list of devices attached"):
+            continue
+        parts = stripped.split()
+        if not parts:
+            continue
+        serial = parts[0]
+        state = parts[1] if len(parts) > 1 else "unknown"
+        extras: Dict[str, Any] = {}
+        descriptors: List[str] = []
+        for token in parts[2:]:
+            if "=" in token:
+                key, value = token.split("=", 1)
+                extras[key] = value
+            else:
+                descriptors.append(token)
+        if descriptors:
+            extras["descriptors"] = descriptors
+        devices.append({"serial": serial, "state": state, "extras": extras or None})
+    return devices
 
 
 # ─────────────────────────────────────────────
@@ -884,6 +1149,149 @@ def deploy(spec: DeploySpec) -> Dict[str, Any]:
             steps.append({"cmd": inner, "rc": -1, "stdout": "", "stderr": str(e)})
             return {"ok": False, "steps": steps}
     return {"ok": True, "steps": steps}
+
+
+# ─────────────────────────────────────────────
+# BlissOS: ADB control
+# ─────────────────────────────────────────────
+@app.get("/bliss/adb/devices")
+def bliss_adb_devices() -> Dict[str, Any]:
+    try:
+        rc, out, err = _run_adb(["devices", "-l"], timeout=15)
+    except ADBError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=f"/bliss/adb/devices failed: {exc}") from exc
+    return {"rc": rc, "stdout": out, "stderr": err, "devices": _parse_adb_devices(out)}
+
+
+@app.post("/bliss/adb/connect")
+def bliss_adb_connect(spec: BlissADBConnectSpec) -> Dict[str, Any]:
+    address = _resolve_bliss_address(spec)
+    steps: List[Dict[str, Any]] = []
+
+    try:
+        if spec.force_disconnect:
+            rc_disc, out_disc, err_disc = _run_adb(["disconnect", address], timeout=spec.timeout)
+            steps.append({
+                "action": "disconnect",
+                "rc": rc_disc,
+                "stdout": out_disc,
+                "stderr": err_disc,
+            })
+
+        rc_conn, out_conn, err_conn = _run_adb(["connect", address], timeout=spec.timeout)
+        steps.append({
+            "action": "connect",
+            "rc": rc_conn,
+            "stdout": out_conn,
+            "stderr": err_conn,
+        })
+    except ADBError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=f"/bliss/adb/connect failed: {exc}") from exc
+
+    wait_step: Optional[Dict[str, Any]] = None
+    connect_ok = steps[-1]["rc"] == 0 if steps else False
+    if spec.wait_for_device and connect_ok:
+        try:
+            rc_wait, out_wait, err_wait = _run_adb(["-s", address, "wait-for-device"], timeout=spec.timeout)
+            wait_step = {
+                "action": "wait-for-device",
+                "rc": rc_wait,
+                "stdout": out_wait,
+                "stderr": err_wait,
+            }
+        except ADBError as exc:
+            wait_step = {
+                "action": "wait-for-device",
+                "rc": -1,
+                "stdout": "",
+                "stderr": str(exc),
+            }
+        steps.append(wait_step)
+
+    connect_step = next((s for s in steps if s.get("action") == "connect"), None)
+    wait_for_device_step = next((s for s in steps if s.get("action") == "wait-for-device"), None)
+    ok = bool(connect_step and connect_step.get("rc") == 0)
+    if ok and wait_for_device_step is not None:
+        ok = wait_for_device_step.get("rc") == 0
+
+    return {
+        "address": address,
+        "connected": ok,
+        "steps": steps,
+    }
+
+
+@app.post("/bliss/adb/disconnect")
+def bliss_adb_disconnect(spec: BlissADBDisconnectSpec) -> Dict[str, Any]:
+    if spec.all:
+        target_desc = "all"
+        args = ["disconnect", "--all"]
+    else:
+        address = _resolve_bliss_address(spec)
+        target_desc = address
+        args = ["disconnect", address]
+
+    try:
+        rc, out, err = _run_adb(args, timeout=15)
+    except ADBError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=f"/bliss/adb/disconnect failed: {exc}") from exc
+
+    return {
+        "target": target_desc,
+        "rc": rc,
+        "stdout": out,
+        "stderr": err,
+    }
+
+
+@app.post("/bliss/adb/shell")
+def bliss_adb_shell(spec: BlissADBShellSpec) -> Dict[str, Any]:
+    serial = _resolve_bliss_serial(spec)
+    commands = _normalize_shell_commands(spec)
+    steps: List[Dict[str, Any]] = []
+
+    for command in commands:
+        args = ["-s", serial, "shell"]
+        if spec.use_su:
+            args.extend(["su", "-c", command])
+        else:
+            args.append(command)
+        try:
+            rc, out, err = _run_adb(args, timeout=spec.timeout)
+        except ADBError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=f"/bliss/adb/shell failed: {exc}") from exc
+        step = {
+            "command": command,
+            "rc": rc,
+            "stdout": out,
+            "stderr": err,
+            "used_su": spec.use_su,
+        }
+        steps.append(step)
+        if rc != 0:
+            break
+
+    ok = all(step["rc"] == 0 for step in steps)
+    return {"serial": serial, "ok": ok, "steps": steps}
+
+
+@app.post("/bliss/adb/command")
+def bliss_adb_command(spec: BlissADBCommandSpec) -> Dict[str, Any]:
+    serial = _resolve_bliss_serial(spec)
+    adb_args = _normalize_adb_args(spec)
+    full_args = ["-s", serial, *adb_args]
+    try:
+        rc, out, err = _run_adb(full_args, timeout=spec.timeout)
+    except ADBError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=f"/bliss/adb/command failed: {exc}") from exc
+
+    return {
+        "serial": serial,
+        "args": adb_args,
+        "rc": rc,
+        "stdout": out,
+        "stderr": err,
+    }
 
 
 # ─────────────────────────────────────────────

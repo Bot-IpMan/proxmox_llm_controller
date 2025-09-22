@@ -14,6 +14,7 @@
 - **Автодеплой** (`/deploy`) – розгортання Git-проєктів.
 - **SSH** (`/ssh/run`) – виконання команд на будь-якому хості.
 - **Запуск додатків** (`/apps/launch`) та **контроль браузера** (`/browser/open`) для GUI/TUI та headless-роботи.
+- **BlissOS 16.9.7 через ADB** (`/bliss/adb/devices`, `/bliss/adb/connect`, `/bliss/adb/shell`, `/bliss/adb/command`, `/bliss/adb/disconnect`).
 
 ## Дефолтне оточення
 VMID 100-999; мережа 192.168.1.0/24 з gateway 192.168.1.1; bridge vmbr0; storage local-lvm; шаблони Debian 12 та Ubuntu 22.04; root-SSH-ключ уже налаштований.
