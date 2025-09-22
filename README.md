@@ -84,6 +84,50 @@
       }'
   ```
 
+### BlissOS 16.9.7 через ADB
+
+Для керування BlissOS (Android x86) контролер виконує команди `adb`. Налаштуйте TCP-підключення через змінні середовища:
+
+```env
+# host:port TCP-підключення до BlissOS
+BLISS_ADB_ADDRESS=192.168.56.101:5555
+# або окремо
+BLISS_ADB_HOST=192.168.56.101
+BLISS_ADB_PORT=5555
+
+# Для USB-пристроїв можна задати серійник напряму
+BLISS_ADB_SERIAL=RQCT30W45KM
+
+# (необов'язково) шлях до двійки adb усередині контейнера
+ADB_BINARY=/platform-tools/adb
+```
+
+API-ендпоінти:
+
+* **Перелік пристроїв** – `GET /bliss/adb/devices`
+* **Підключення до BlissOS** – `POST /bliss/adb/connect {"host": "192.168.56.101", "port": 5555}`
+* **Виконання shell-команд** –
+
+  ```json
+  POST /bliss/adb/shell
+  {
+    "cmd": "input keyevent 26"
+  }
+  ```
+
+  Для кількох команд використовуйте масив `"commands": ["wm size", "wm density"]`. Параметр `"use_su": true` дозволяє виконувати `su -c`.
+
+* **Будь-які інші adb-операції** – `POST /bliss/adb/command {"args": ["install", "/tmp/app.apk"]}` або
+
+  ```json
+  POST /bliss/adb/command
+  {
+    "command": "shell am start -a android.intent.action.VIEW -d https://example.com"
+  }
+  ```
+
+* **Роз'єднання** – `POST /bliss/adb/disconnect {"all": true}` або з конкретною адресою.
+
 ## Архітектура
 
 Локальна LLM, розгорнута через Ollama, може спілкуватися з FastAPI‑контролером і віддавати завдання (наприклад, створити контейнер) у вигляді JSON. Контролер виконує виклики до Proxmox API з допомогою `proxmoxer` й повертає результат у зручному форматі. Такий підхід дозволяє відокремити LLM від прямого root‑доступу на хості, реалізувати фільтрацію та логування, і легко розширювати функціональність.
