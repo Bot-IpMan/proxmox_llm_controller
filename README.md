@@ -90,9 +90,9 @@
 
 ```env
 # host:port TCP-підключення до BlissOS
-BLISS_ADB_ADDRESS=192.168.56.101:5555
+BLISS_ADB_ADDRESS=192.168.1.218:5555
 # або окремо
-BLISS_ADB_HOST=192.168.56.101
+BLISS_ADB_HOST=192.168.1.218
 BLISS_ADB_PORT=5555
 
 # Для USB-пристроїв можна задати серійник напряму
@@ -102,15 +102,10 @@ BLISS_ADB_SERIAL=RQCT30W45KM
 ADB_BINARY=/platform-tools/adb
 ```
 
-> Щоб підключити лише BlissOS-ендпоінти як окремий інструмент OpenWebUI, імпортуйте файл [`openapi_bliss.json`](openapi_bliss.json)
-> у меню **Tools → API Specifications** (або просто вкажіть URL `http://proxmox-controller:8000/openapi_bliss.json`). Він містить
-> мінімальний OpenAPI-допис для `/bliss/adb/*` і зручний, якщо головний
-> контролер недоступний напряму або потрібно ізолювати adb-операції від решти API.
-
 API-ендпоінти:
 
 * **Перелік пристроїв** – `GET /bliss/adb/devices`
-* **Підключення до BlissOS** – `POST /bliss/adb/connect {"host": "192.168.56.101", "port": 5555}`
+* **Підключення до BlissOS** – `POST /bliss/adb/connect {"host": "192.168.1.218", "port": 5555}`
 * **Виконання shell-команд** –
 
   ```json
