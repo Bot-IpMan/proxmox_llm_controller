@@ -103,7 +103,8 @@ ADB_BINARY=/platform-tools/adb
 ```
 
 > Щоб підключити лише BlissOS-ендпоінти як окремий інструмент OpenWebUI, імпортуйте файл [`openapi_bliss.json`](openapi_bliss.json)
-> у меню **Tools → API Specifications**. Він містить мінімальний OpenAPI-допис для `/bliss/adb/*` і зручний, якщо головний
+> у меню **Tools → API Specifications** (або просто вкажіть URL `http://proxmox-controller:8000/openapi_bliss.json`). Він містить
+> мінімальний OpenAPI-допис для `/bliss/adb/*` і зручний, якщо головний
 > контролер недоступний напряму або потрібно ізолювати adb-операції від решти API.
 
 API-ендпоінти:
