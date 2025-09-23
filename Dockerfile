@@ -34,6 +34,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 3) Код
 COPY controller/ .
 COPY openapi.json /app/openapi.json
+COPY openapi_bliss.json /app/openapi_bliss.json
 
 # 3a) Default SSH key setup for convenient manual access
 COPY setup_ssh_key.sh /usr/local/bin/setup_ssh_key.sh
