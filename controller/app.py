@@ -33,7 +33,7 @@ log = logging.getLogger("universal-controller")
 # FastAPI
 # ─────────────────────────────────────────────
 app = FastAPI(title="Universal LLM Controller", version="2.1.0")
-BLISS_OPENAPI_PATH = os.getenv("BLISS_OPENAPI_PATH", "/app/openapi_bliss.json")
+BLISS_OPENAPI_PATH = os.getenv("BLISS_OPENAPI_PATH")
 
 # CORS (наприклад, якщо викликаєш з OpenWebUI з іншого походження)
 app.add_middleware(
@@ -64,6 +64,9 @@ def _load_bliss_openapi() -> Dict[str, Any]:
     """Load the BlissOS-only OpenAPI specification from disk."""
 
     path = BLISS_OPENAPI_PATH
+    if not path:
+        raise FileNotFoundError("BlissOS OpenAPI specification is not configured.")
+
     with open(path, "r", encoding="utf-8") as handle:
         try:
             return json.load(handle)
@@ -80,12 +83,16 @@ def bliss_openapi_spec() -> Dict[str, Any]:
     try:
         return _load_bliss_openapi()
     except FileNotFoundError as exc:  # pragma: no cover - defensive guard
-        raise HTTPException(
-            status_code=404,
-            detail=(
+        if BLISS_OPENAPI_PATH:
+            detail = (
                 "BlissOS OpenAPI specification not found. "
                 f"Expected file at '{BLISS_OPENAPI_PATH}'."
-            ),
+            )
+        else:
+            detail = "BlissOS OpenAPI specification is not configured."
+        raise HTTPException(
+            status_code=404,
+            detail=detail,
         ) from exc
     except ValueError as exc:  # pragma: no cover - defensive guard
         raise _http_500(str(exc)) from exc
