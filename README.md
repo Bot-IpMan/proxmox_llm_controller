@@ -16,6 +16,15 @@
    # PROXMOX_TOKEN_NAME=WebUI  # не обов'язково, автоматично з PROXMOX_USER
    PROXMOX_TOKEN_VALUE=superSecret
    PROXMOX_VERIFY_SSL=False
+
+   # (необов'язково) BlissOS через ADB
+   # BLISS_ADB_ADDRESS=192.168.1.218:5555
+   # або окремо:
+   # BLISS_ADB_HOST=192.168.1.218
+   # BLISS_ADB_PORT=5555
+   # BLISS_ADB_SERIAL=RQCT30W45KM
+   # BLISS_OPENAPI_PATH=/app/openapi_bliss.json
+   # ADB_BINARY=/usr/bin/adb  # adb вже входить до образу, змінюйте лише за потреби
    ```
 
    > Щоб згенерувати API‑токен у Proxmox, відкрийте *Datacenter* → *Permissions* → *API Tokens*.
@@ -89,7 +98,7 @@
 Для керування BlissOS (Android x86) контролер виконує команди `adb`. Налаштуйте TCP-підключення через змінні середовища:
 
 ```env
-# host:port TCP-підключення до BlissOS
+# host:port TCP-підключення до BlissOS (значення можна одразу додати в .env)
 BLISS_ADB_ADDRESS=192.168.1.218:5555
 # або окремо
 BLISS_ADB_HOST=192.168.1.218
@@ -98,8 +107,9 @@ BLISS_ADB_PORT=5555
 # Для USB-пристроїв можна задати серійник напряму
 BLISS_ADB_SERIAL=RQCT30W45KM
 
-# (необов'язково) шлях до двійки adb усередині контейнера
-ADB_BINARY=/platform-tools/adb
+# (необов'язково) власний шлях до OpenAPI або двійки adb
+# BLISS_OPENAPI_PATH=/app/openapi_bliss.json
+ADB_BINARY=/usr/bin/adb  # adb вже встановлений в образі, змінюйте лише за потреби
 ```
 
 API-ендпоінти:

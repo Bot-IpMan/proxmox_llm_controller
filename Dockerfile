@@ -11,6 +11,7 @@ WORKDIR /app
 #    - unzip, tar, xz-utils — розпаковка архівів (zip/tar.xz)
 #    - procps, iputils-ping, dnsutils, net-tools — діагностика мережі/процесів
 #    - git             — інколи стане у пригоді і всередині контролера
+#    - adb             — Android Debug Bridge для взаємодії з BlissOS
 RUN apt-get update && apt-get install -y --no-install-recommends \
     openssh-client \
     wget \
@@ -25,6 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     dnsutils \
     net-tools \
     git \
+    adb \
  && rm -rf /var/lib/apt/lists/*
 
 # 2) Python-залежності
