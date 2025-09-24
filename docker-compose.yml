@@ -71,6 +71,13 @@ services:
       - PVE_SSH_HOST=${PVE_SSH_HOST}
       - PVE_SSH_USER=${PVE_SSH_USER:-root}
       - PVE_SSH_KEY_PATH=/keys/pve_id_rsa
+      # BlissOS / ADB
+      - BLISS_ADB_ADDRESS=${BLISS_ADB_ADDRESS:-}
+      - BLISS_ADB_HOST=${BLISS_ADB_HOST:-}
+      - BLISS_ADB_PORT=${BLISS_ADB_PORT:-5555}
+      - BLISS_ADB_SERIAL=${BLISS_ADB_SERIAL:-}
+      - ADB_BINARY=${ADB_BINARY:-}
+      - BLISS_OPENAPI_PATH=${BLISS_OPENAPI_PATH:-}
     volumes:
       - ./keys:/keys:ro
       - ./openapi.json:/app/openapi.json:ro
