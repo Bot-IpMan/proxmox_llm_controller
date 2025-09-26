@@ -32,7 +32,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     dnsutils \
     net-tools \
     git \
-    android-sdk-platform-tools \
+    adb \
  && rm -rf /var/lib/apt/lists/*
 
 # 2) Python-залежності
