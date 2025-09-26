@@ -1,0 +1,779 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "BlissOS ADB API",
+    "description": "REST-ендпоінти для керування BlissOS (Android x86) через adb.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://proxmox-controller:8000",
+      "description": "Internal Docker network"
+    },
+    {
+      "url": "http://localhost:8000",
+      "description": "Local development"
+    }
+  ],
+  "paths": {
+    "/bliss/adb/devices": {
+      "get": {
+        "summary": "Список ADB-пристроїв BlissOS",
+        "description": "Виконує `adb devices -l` і повертає сирий вивід разом зі списком розпарсених пристроїв.",
+        "operationId": "listBlissADBDevices",
+        "tags": [
+          "BlissOS"
+        ],
+        "responses": {
+          "200": {
+            "description": "Результат виконання adb devices",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rc": {
+                      "type": "integer",
+                      "description": "Код завершення adb"
+                    },
+                    "stdout": {
+                      "type": "string",
+                      "description": "Стандартний вивід"
+                    },
+                    "stderr": {
+                      "type": "string",
+                      "description": "Стандартний потік помилок"
+                    },
+                    "devices": {
+                      "type": "array",
+                      "description": "Розпарсений список пристроїв",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "serial": {
+                            "type": "string"
+                          },
+                          "state": {
+                            "type": "string"
+                          },
+                          "extras": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "additionalProperties": true,
+                            "description": "Додаткові атрибути (model=..., device=..., descriptors тощо)"
+                          }
+                        },
+                        "required": [
+                          "serial",
+                          "state"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "rc",
+                    "stdout",
+                    "stderr",
+                    "devices"
+                  ]
+                },
+                "example": {
+                  "rc": 0,
+                  "stdout": "List of devices attached\n192.168.1.218:5555    device product=bliss model=BlissOS\n",
+                  "stderr": "",
+                  "devices": [
+                    {
+                      "serial": "192.168.1.218:5555",
+                      "state": "device",
+                      "extras": {
+                        "product": "bliss",
+                        "model": "BlissOS"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Невірні параметри або adb недоступний",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Помилка виконання adb",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bliss/adb/connect": {
+      "post": {
+        "summary": "Підключення до BlissOS через adb connect",
+        "description": "Виконує послідовність `adb disconnect` (опційно), `adb connect` і, за потреби, `adb wait-for-device`.",
+        "operationId": "connectBlissADB",
+        "tags": [
+          "BlissOS"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlissADBConnectSpec"
+              },
+              "example": {
+                "host": "192.168.1.218",
+                "port": 5555,
+                "force_disconnect": true,
+                "wait_for_device": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Стан підключення",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "address": {
+                      "type": "string",
+                      "description": "Цільове host:port"
+                    },
+                    "connected": {
+                      "type": "boolean",
+                      "description": "Чи успішно підключились"
+                    },
+                    "steps": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "action": {
+                            "type": "string"
+                          },
+                          "rc": {
+                            "type": "integer"
+                          },
+                          "stdout": {
+                            "type": "string"
+                          },
+                          "stderr": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "action",
+                          "rc",
+                          "stdout",
+                          "stderr"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "address",
+                    "connected",
+                    "steps"
+                  ]
+                },
+                "example": {
+                  "address": "192.168.1.218:5555",
+                  "connected": true,
+                  "steps": [
+                    {
+                      "action": "disconnect",
+                      "rc": 0,
+                      "stdout": "disconnected 192.168.1.218:5555",
+                      "stderr": ""
+                    },
+                    {
+                      "action": "connect",
+                      "rc": 0,
+                      "stdout": "connected to 192.168.1.218:5555",
+                      "stderr": ""
+                    },
+                    {
+                      "action": "wait-for-device",
+                      "rc": 0,
+                      "stdout": "",
+                      "stderr": ""
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Невірні параметри запиту",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Помилка adb",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bliss/adb/disconnect": {
+      "post": {
+        "summary": "Роз'єднання adb",
+        "description": "Виконує `adb disconnect --all` або `adb disconnect <host:port>`.",
+        "operationId": "disconnectBlissADB",
+        "tags": [
+          "BlissOS"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlissADBDisconnectSpec"
+              },
+              "examples": {
+                "single": {
+                  "summary": "Роз'єднання конкретної адреси",
+                  "value": {
+                    "host": "192.168.1.218",
+                    "port": 5555
+                  }
+                },
+                "all": {
+                  "summary": "Роз'єднати всі підключення",
+                  "value": {
+                    "all": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Результат adb disconnect",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "target": {
+                      "type": "string",
+                      "description": "Опис цілі (host:port або 'all')"
+                    },
+                    "rc": {
+                      "type": "integer",
+                      "description": "Код завершення"
+                    },
+                    "stdout": {
+                      "type": "string"
+                    },
+                    "stderr": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "target",
+                    "rc",
+                    "stdout",
+                    "stderr"
+                  ]
+                },
+                "example": {
+                  "target": "192.168.1.218:5555",
+                  "rc": 0,
+                  "stdout": "disconnected 192.168.1.218:5555",
+                  "stderr": ""
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Невірні параметри",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Помилка adb",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bliss/adb/shell": {
+      "post": {
+        "summary": "Виконання команд через adb shell",
+        "description": "Послідовно виконує одну або кілька команд через `adb shell` (опційно обгортаючи в `su -c`).",
+        "operationId": "shellBlissADB",
+        "tags": [
+          "BlissOS"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlissADBShellSpec"
+              },
+              "examples": {
+                "single": {
+                  "summary": "Одна команда",
+                  "value": {
+                    "serial": "192.168.1.218:5555",
+                    "cmd": "settings get secure wifi_on"
+                  }
+                },
+                "multiple": {
+                  "summary": "Послідовність команд",
+                  "value": {
+                    "host": "192.168.1.218",
+                    "port": 5555,
+                    "commands": [
+                      "input keyevent 26",
+                      "input swipe 0 0 1080 0"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Результати виконання команд",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "serial": {
+                      "type": "string"
+                    },
+                    "ok": {
+                      "type": "boolean",
+                      "description": "true, якщо всі команди завершились успішно"
+                    },
+                    "steps": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "command": {
+                            "type": "string"
+                          },
+                          "rc": {
+                            "type": "integer"
+                          },
+                          "stdout": {
+                            "type": "string"
+                          },
+                          "stderr": {
+                            "type": "string"
+                          },
+                          "used_su": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "command",
+                          "rc",
+                          "stdout",
+                          "stderr",
+                          "used_su"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "serial",
+                    "ok",
+                    "steps"
+                  ]
+                },
+                "example": {
+                  "serial": "192.168.1.218:5555",
+                  "ok": true,
+                  "steps": [
+                    {
+                      "command": "settings get secure wifi_on",
+                      "rc": 0,
+                      "stdout": "1\n",
+                      "stderr": "",
+                      "used_su": false
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Невірні параметри або команда",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Помилка adb",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bliss/adb/command": {
+      "post": {
+        "summary": "Будь-яка команда adb",
+        "description": "Виконує довільну команду `adb` (наприклад, install, pull, am start).",
+        "operationId": "commandBlissADB",
+        "tags": [
+          "BlissOS"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlissADBCommandSpec"
+              },
+              "examples": {
+                "args": {
+                  "summary": "Формат args",
+                  "value": {
+                    "serial": "192.168.1.218:5555",
+                    "args": [
+                      "install",
+                      "/tmp/app.apk"
+                    ]
+                  }
+                },
+                "command": {
+                  "summary": "Формат рядка",
+                  "value": {
+                    "host": "192.168.1.218",
+                    "port": 5555,
+                    "command": "shell am start -a android.settings.WIFI_SETTINGS"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Результат виконання adb",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "serial": {
+                      "type": "string"
+                    },
+                    "args": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Команда, передана у adb після нормалізації"
+                    },
+                    "rc": {
+                      "type": "integer"
+                    },
+                    "stdout": {
+                      "type": "string"
+                    },
+                    "stderr": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "serial",
+                    "args",
+                    "rc",
+                    "stdout",
+                    "stderr"
+                  ]
+                },
+                "example": {
+                  "serial": "192.168.1.218:5555",
+                  "args": [
+                    "shell",
+                    "am",
+                    "start",
+                    "-a",
+                    "android.settings.WIFI_SETTINGS"
+                  ],
+                  "rc": 0,
+                  "stdout": "Starting: Intent { act=android.settings.WIFI_SETTINGS }",
+                  "stderr": ""
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Невірні параметри",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Помилка adb",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BlissADBConnectSpec": {
+        "type": "object",
+        "description": "Параметри для adb connect",
+        "properties": {
+          "serial": {
+            "type": "string",
+            "description": "ADB серійний номер або host:port. Має пріоритет над host/port.",
+            "example": "192.168.1.218:5555"
+          },
+          "host": {
+            "type": "string",
+            "description": "IP або hostname BlissOS для TCP ADB.",
+            "example": "192.168.1.218"
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535,
+            "description": "TCP-порт ADB",
+            "default": 5555
+          },
+          "force_disconnect": {
+            "type": "boolean",
+            "description": "Спочатку виконати adb disconnect target",
+            "default": false
+          },
+          "wait_for_device": {
+            "type": "boolean",
+            "description": "Почекати пристрій через adb wait-for-device",
+            "default": true
+          },
+          "timeout": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 600,
+            "description": "Таймаут підключення у секундах",
+            "default": 20
+          }
+        }
+      },
+      "BlissADBDisconnectSpec": {
+        "type": "object",
+        "description": "Параметри для adb disconnect",
+        "properties": {
+          "serial": {
+            "type": "string",
+            "description": "ADB серійний номер або host:port",
+            "example": "192.168.1.218:5555"
+          },
+          "host": {
+            "type": "string",
+            "description": "IP або hostname BlissOS",
+            "example": "192.168.1.218"
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535,
+            "description": "TCP-порт ADB",
+            "default": 5555
+          },
+          "all": {
+            "type": "boolean",
+            "description": "Якщо true — adb disconnect --all",
+            "default": false
+          }
+        }
+      },
+      "BlissADBShellSpec": {
+        "type": "object",
+        "description": "Специфікація команд для adb shell",
+        "properties": {
+          "serial": {
+            "type": "string",
+            "description": "ADB серійний номер або host:port",
+            "example": "192.168.1.218:5555"
+          },
+          "host": {
+            "type": "string",
+            "description": "IP або hostname BlissOS",
+            "example": "192.168.1.218"
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535,
+            "description": "TCP-порт ADB",
+            "default": 5555
+          },
+          "cmd": {
+            "type": "string",
+            "description": "Одна команда для adb shell",
+            "example": "settings get secure wifi_on"
+          },
+          "commands": {
+            "type": "array",
+            "description": "Послідовність команд",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "timeout": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1800,
+            "description": "Таймаут для кожної команди",
+            "default": 60
+          },
+          "use_su": {
+            "type": "boolean",
+            "description": "Обгорнути команду у su -c",
+            "default": false
+          }
+        }
+      },
+      "BlissADBCommandSpec": {
+        "type": "object",
+        "description": "Специфікація для довільних adb команд",
+        "properties": {
+          "serial": {
+            "type": "string",
+            "description": "ADB серійний номер або host:port",
+            "example": "192.168.1.218:5555"
+          },
+          "host": {
+            "type": "string",
+            "description": "IP або hostname BlissOS",
+            "example": "192.168.1.218"
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535,
+            "description": "TCP-порт ADB",
+            "default": 5555
+          },
+          "command": {
+            "type": "string",
+            "description": "Повна adb команда (без слова 'adb')",
+            "example": "shell am start -a android.settings.WIFI_SETTINGS"
+          },
+          "args": {
+            "type": "array",
+            "description": "Команда у форматі списку",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "timeout": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1800,
+            "description": "Таймаут виконання",
+            "default": 60
+          }
+        }
+      },
+      "BadRequestError": {
+        "type": "object",
+        "description": "Помилка вхідних параметрів або тіла запиту.",
+        "required": [
+          "detail"
+        ],
+        "properties": {
+          "detail": {
+            "type": "string",
+            "description": "Пояснення, які параметри запиту невалідні або відсутні."
+          }
+        },
+        "example": {
+          "detail": "Invalid vmid: must be between 100 and 999."
+        }
+      },
+      "InternalServerError": {
+        "type": "object",
+        "description": "Внутрішня помилка контролера або Proxmox.",
+        "required": [
+          "detail"
+        ],
+        "properties": {
+          "detail": {
+            "type": "string",
+            "description": "Описує причину внутрішньої помилки."
+          }
+        },
+        "example": {
+          "detail": "Proxmox API call failed: connection refused."
+        }
+      }
+    }
+  }
+}
