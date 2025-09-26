@@ -4,7 +4,10 @@ import unittest
 from pathlib import Path
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+# Ensure the repository root is importable so that ``import controller``
+# resolves to the package in this project rather than relying on the test
+# directory being a package itself.
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
