@@ -12,6 +12,12 @@ WORKDIR /app
 #    - procps, iputils-ping, dnsutils, net-tools — діагностика мережі/процесів
 #    - git             — інколи стане у пригоді і всередині контролера
 #    - android-sdk-platform-tools (adb) — Android Debug Bridge для взаємодії з BlissOS
+#
+#  Деякі пакети, зокрема android-sdk-platform-tools, знаходяться у розділах
+#  contrib/non-free офіційних репозиторіїв Debian. Базовий образ python:3.11-slim
+#  постачається лише з репозиторіями main, тому перед встановленням інструментів
+#  додаємо ці компоненти для усіх джерел APT.
+RUN sed -i 's/^Components: main$/Components: main contrib non-free non-free-firmware/' /etc/apt/sources.list.d/debian.sources
 RUN apt-get update && apt-get install -y --no-install-recommends \
     openssh-client \
     wget \
