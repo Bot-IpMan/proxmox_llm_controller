@@ -714,37 +714,51 @@ def _looks_like_hostname(value: str) -> bool:
 
 def _resolve_bliss_serial(spec: BaseModel, require_tcp: bool = False) -> str:
     port = _resolve_bliss_port(spec)
+
     serial_candidate = _first_non_empty(
         getattr(spec, "serial", None),
         _env_non_empty("BLISS_ADB_SERIAL"),
-        _env_non_empty("BLISS_ADB_ADDRESS"),
     )
     host_candidate = _first_non_empty(
         getattr(spec, "host", None),
         _env_non_empty("BLISS_ADB_HOST"),
     )
+    address_candidate = _env_non_empty("BLISS_ADB_ADDRESS")
+
+    def _with_port(value: str) -> str:
+        value = value.strip()
+        if not value:
+            return value
+        if ":" in value:
+            return value
+        port_value = port or 5555
+        return f"{value}:{port_value}"
 
     if serial_candidate:
         serial_candidate = serial_candidate.strip()
         if serial_candidate:
             if ":" in serial_candidate:
                 return serial_candidate
-            if require_tcp and not _looks_like_hostname(serial_candidate):
+            if require_tcp:
+                if _looks_like_hostname(serial_candidate):
+                    return _with_port(serial_candidate)
                 if host_candidate:
-                    port_value = port or 5555
-                    return f"{host_candidate}:{port_value}"
+                    return _with_port(host_candidate)
+                if address_candidate:
+                    return _with_port(address_candidate)
                 raise HTTPException(
                     400,
                     "Provide BlissOS ADB host/port for TCP connection (serial lacks host:port)",
                 )
             if _looks_like_hostname(serial_candidate):
-                port_value = port or 5555
-                return f"{serial_candidate}:{port_value}"
+                return _with_port(serial_candidate)
             return serial_candidate
 
     if host_candidate:
-        port_value = port or 5555
-        return f"{host_candidate}:{port_value}"
+        return _with_port(host_candidate)
+
+    if address_candidate:
+        return _with_port(address_candidate)
 
     raise HTTPException(
         400,
