@@ -81,6 +81,7 @@ services:
     volumes:
       - ./keys:/keys:ro
       - ./openapi.json:/app/openapi.json:ro
+      - ./openapi_bliss.json:/app/openapi_bliss.json:ro
       # Якщо хочеш live-reload коду під час розробки:
       # - ./controller:/app
     # Всі залежності вже встановлені під час збірки образу,

@@ -138,6 +138,11 @@ API-ендпоінти:
 
 * **Роз'єднання** – `POST /bliss/adb/disconnect {"all": true}` або з конкретною адресою.
 
+> Файл [`openapi_bliss.json`](openapi_bliss.json) містить окрему OpenAPI-специфікацію лише для BlissOS/ADB.
+> Якщо змінну `BLISS_OPENAPI_PATH` вказати на `/app/openapi_bliss.json` (у `docker-compose.yml` файл вже монтується в контейнер),
+> ендпоінт `GET /openapi_bliss.json` дозволить додати BlissOS як окремий інструмент в OpenWebUI або іншому клієнті. Основний
+> [`openapi.json`](openapi.json) також містить ці ендпоінти, тож їх можна використовувати і без додаткової специфікації.
+
 #### Як сформулювати запит до ЛЛМ для дії в BlissOS
 
 Щоб агент правильно зрозумів завдання, опиши:

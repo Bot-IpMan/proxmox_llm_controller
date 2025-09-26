@@ -3,7 +3,7 @@
   "info": {
     "title": "Universal LLM Controller",
     "description": "API для керування Proxmox через LLM. Дозволяє створювати, запускати контейнери, виконувати команди та деплоїти код.",
-    "version": "2.0.0"
+    "version": "2.1.0"
   },
   "servers": [
     {
@@ -21,7 +21,9 @@
         "summary": "Профіль агента",
         "description": "Повертає системний промпт, quick-reference та дефолтні параметри для LLM агента.",
         "operationId": "getAgentProfile",
-        "tags": ["Agent"],
+        "tags": [
+          "Agent"
+        ],
         "responses": {
           "200": {
             "description": "Профіль агента",
@@ -30,19 +32,35 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "name": {"type": "string"},
-                    "description": {"type": "string"},
-                    "version": {"type": "string"},
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    },
                     "controller": {
                       "type": "object",
                       "properties": {
-                        "base_url": {"type": "string"},
-                        "openapi_url": {"type": "string"}
+                        "base_url": {
+                          "type": "string"
+                        },
+                        "openapi_url": {
+                          "type": "string"
+                        }
                       }
                     },
-                    "defaults": {"type": "object"},
-                    "system_prompt": {"type": "string"},
-                    "quick_reference": {"type": "string"}
+                    "defaults": {
+                      "type": "object"
+                    },
+                    "system_prompt": {
+                      "type": "string"
+                    },
+                    "quick_reference": {
+                      "type": "string"
+                    }
                   }
                 },
                 "example": {
@@ -74,7 +92,9 @@
             "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
               }
             }
           },
@@ -82,7 +102,9 @@
             "description": "Запитаний контейнер або вузол не знайдено.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
               }
             }
           },
@@ -90,7 +112,9 @@
             "description": "Внутрішня помилка контролера або Proxmox.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/InternalServerError"}
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
+                }
               }
             }
           }
@@ -101,7 +125,9 @@
       "get": {
         "summary": "Перевірка статусу API",
         "operationId": "checkHealth",
-        "tags": ["System"],
+        "tags": [
+          "System"
+        ],
         "responses": {
           "200": {
             "description": "API працює",
@@ -110,8 +136,12 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "status": { "type": "string" },
-                    "version": { "type": "string" }
+                    "status": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    }
                   }
                 }
               }
@@ -121,7 +151,9 @@
             "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
               }
             }
           },
@@ -129,7 +161,9 @@
             "description": "Запитаний контейнер або вузол не знайдено.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
               }
             }
           },
@@ -137,7 +171,9 @@
             "description": "Внутрішня помилка контролера або Proxmox.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/InternalServerError"}
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
+                }
               }
             }
           }
@@ -149,7 +185,9 @@
         "summary": "Версія Proxmox VE",
         "description": "Повертає інформацію про встановлену версію Proxmox VE так само, як ``/api2/json/version``.",
         "operationId": "getProxmoxVersion",
-        "tags": ["Proxmox"],
+        "tags": [
+          "Proxmox"
+        ],
         "responses": {
           "200": {
             "description": "Версія Proxmox VE",
@@ -158,10 +196,22 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "version": { "type": "string", "description": "Повна версія (наприклад, 8.1-2)" },
-                    "release": { "type": "string", "description": "Основний реліз" },
-                    "repoid": { "type": "string", "description": "Ідентифікатор репозиторію" },
-                    "name": { "type": "string", "description": "Назва продукту" }
+                    "version": {
+                      "type": "string",
+                      "description": "Повна версія (наприклад, 8.1-2)"
+                    },
+                    "release": {
+                      "type": "string",
+                      "description": "Основний реліз"
+                    },
+                    "repoid": {
+                      "type": "string",
+                      "description": "Ідентифікатор репозиторію"
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Назва продукту"
+                    }
                   },
                   "additionalProperties": true
                 },
@@ -178,7 +228,9 @@
             "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
               }
             }
           },
@@ -186,7 +238,9 @@
             "description": "Запитаний контейнер або вузол не знайдено.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
               }
             }
           },
@@ -194,7 +248,9 @@
             "description": "Внутрішня помилка контролера або Proxmox.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/InternalServerError"}
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
+                }
               }
             }
           }
@@ -206,7 +262,9 @@
         "summary": "Список Proxmox вузлів",
         "description": "Повертає ``nodes.get()`` з Proxmox API. Відповідь містить детальну інформацію про кожен вузол.",
         "operationId": "listNodes",
-        "tags": ["Proxmox"],
+        "tags": [
+          "Proxmox"
+        ],
         "responses": {
           "200": {
             "description": "Список вузлів",
@@ -217,19 +275,54 @@
                   "items": {
                     "type": "object",
                     "properties": {
-                      "node": { "type": "string", "description": "Назва вузла" },
-                      "status": { "type": "string", "description": "online/offline" },
-                      "cpu": { "type": "number", "description": "Поточне використання CPU (0-1)" },
-                      "maxcpu": { "type": "integer", "description": "Кількість логічних CPU" },
-                      "mem": { "type": "integer", "description": "Використана пам'ять у байтах" },
-                      "maxmem": { "type": "integer", "description": "Доступна пам'ять у байтах" },
-                      "disk": { "type": "integer", "description": "Використаний диск у байтах" },
-                      "maxdisk": { "type": "integer", "description": "Доступний диск у байтах" },
-                      "uptime": { "type": "integer", "description": "Час роботи у секундах" },
-                      "level": { "type": "string" },
-                      "type": { "type": "string" },
-                      "id": { "type": "string" },
-                      "ssl_fingerprint": { "type": "string" }
+                      "node": {
+                        "type": "string",
+                        "description": "Назва вузла"
+                      },
+                      "status": {
+                        "type": "string",
+                        "description": "online/offline"
+                      },
+                      "cpu": {
+                        "type": "number",
+                        "description": "Поточне використання CPU (0-1)"
+                      },
+                      "maxcpu": {
+                        "type": "integer",
+                        "description": "Кількість логічних CPU"
+                      },
+                      "mem": {
+                        "type": "integer",
+                        "description": "Використана пам'ять у байтах"
+                      },
+                      "maxmem": {
+                        "type": "integer",
+                        "description": "Доступна пам'ять у байтах"
+                      },
+                      "disk": {
+                        "type": "integer",
+                        "description": "Використаний диск у байтах"
+                      },
+                      "maxdisk": {
+                        "type": "integer",
+                        "description": "Доступний диск у байтах"
+                      },
+                      "uptime": {
+                        "type": "integer",
+                        "description": "Час роботи у секундах"
+                      },
+                      "level": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      },
+                      "ssl_fingerprint": {
+                        "type": "string"
+                      }
                     },
                     "additionalProperties": true
                   }
@@ -258,7 +351,9 @@
             "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
               }
             }
           },
@@ -266,7 +361,9 @@
             "description": "Запитаний контейнер або вузол не знайдено.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
               }
             }
           },
@@ -274,7 +371,9 @@
             "description": "Внутрішня помилка контролера або Proxmox.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/InternalServerError"}
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
+                }
               }
             }
           }
@@ -286,13 +385,17 @@
         "summary": "Список LXC контейнерів",
         "description": "Повертає ``nodes(node).lxc.get()`` з Proxmox API.",
         "operationId": "listLXC",
-        "tags": ["LXC"],
+        "tags": [
+          "LXC"
+        ],
         "parameters": [
           {
             "name": "node",
             "in": "query",
             "required": false,
-            "schema": { "type": "string" },
+            "schema": {
+              "type": "string"
+            },
             "description": "Назва вузла (наприклад, pve). Якщо не задано — використовується перший вузол, повернений Proxmox."
           }
         ],
@@ -312,25 +415,70 @@
                         "minimum": 100,
                         "maximum": 999
                       },
-                      "name": { "type": "string" },
-                      "status": { "type": "string" },
-                      "node": { "type": "string" },
-                      "type": { "type": "string" },
-                      "uptime": { "type": "integer", "description": "Час роботи у секундах" },
-                      "cpu": { "type": "number", "description": "Частка використання CPU (0-1)" },
-                      "cpus": { "type": "integer", "description": "Виділені CPU" },
-                      "maxcpu": { "type": "integer" },
-                      "mem": { "type": "integer", "description": "Використана пам'ять у байтах" },
-                      "maxmem": { "type": "integer", "description": "Виділена пам'ять у байтах" },
-                      "disk": { "type": "integer", "description": "Використаний диск у байтах" },
-                      "maxdisk": { "type": "integer" },
-                      "diskread": { "type": "integer" },
-                      "diskwrite": { "type": "integer" },
-                      "netin": { "type": "integer" },
-                      "netout": { "type": "integer" },
-                      "tags": { "type": "string" },
-                      "lock": { "type": "string" },
-                      "template": { "type": "integer", "description": "1 якщо контейнер є шаблоном" }
+                      "name": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "node": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "type": "string"
+                      },
+                      "uptime": {
+                        "type": "integer",
+                        "description": "Час роботи у секундах"
+                      },
+                      "cpu": {
+                        "type": "number",
+                        "description": "Частка використання CPU (0-1)"
+                      },
+                      "cpus": {
+                        "type": "integer",
+                        "description": "Виділені CPU"
+                      },
+                      "maxcpu": {
+                        "type": "integer"
+                      },
+                      "mem": {
+                        "type": "integer",
+                        "description": "Використана пам'ять у байтах"
+                      },
+                      "maxmem": {
+                        "type": "integer",
+                        "description": "Виділена пам'ять у байтах"
+                      },
+                      "disk": {
+                        "type": "integer",
+                        "description": "Використаний диск у байтах"
+                      },
+                      "maxdisk": {
+                        "type": "integer"
+                      },
+                      "diskread": {
+                        "type": "integer"
+                      },
+                      "diskwrite": {
+                        "type": "integer"
+                      },
+                      "netin": {
+                        "type": "integer"
+                      },
+                      "netout": {
+                        "type": "integer"
+                      },
+                      "tags": {
+                        "type": "string"
+                      },
+                      "lock": {
+                        "type": "string"
+                      },
+                      "template": {
+                        "type": "integer",
+                        "description": "1 якщо контейнер є шаблоном"
+                      }
                     },
                     "additionalProperties": true
                   }
@@ -365,7 +513,9 @@
             "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
               }
             }
           },
@@ -373,7 +523,9 @@
             "description": "Запитаний контейнер або вузол не знайдено.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
               }
             }
           },
@@ -381,7 +533,9 @@
             "description": "Внутрішня помилка контролера або Proxmox.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/InternalServerError"}
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
+                }
               }
             }
           }
@@ -393,7 +547,9 @@
         "summary": "Список LXC через pct list",
         "description": "Виконує ``pct list --output-format json`` на Proxmox-хості через SSH. Потрібні змінні середовища ``PVE_SSH_HOST`` та ``PVE_SSH_USER``.",
         "operationId": "listLXCViaSSH",
-        "tags": ["LXC"],
+        "tags": [
+          "LXC"
+        ],
         "responses": {
           "200": {
             "description": "Список контейнерів з pct list",
@@ -409,19 +565,45 @@
                         "minimum": 100,
                         "maximum": 999
                       },
-                      "status": { "type": "string" },
-                      "node": { "type": "string" },
-                      "name": { "type": "string" },
-                      "type": { "type": "string" },
-                      "uptime": { "type": "integer" },
-                      "cpu": { "type": "number" },
-                      "cpus": { "type": "integer" },
-                      "mem": { "type": "integer" },
-                      "disk": { "type": "integer" },
-                      "diskread": { "type": "integer" },
-                      "diskwrite": { "type": "integer" },
-                      "netin": { "type": "integer" },
-                      "netout": { "type": "integer" }
+                      "status": {
+                        "type": "string"
+                      },
+                      "node": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "type": "string"
+                      },
+                      "uptime": {
+                        "type": "integer"
+                      },
+                      "cpu": {
+                        "type": "number"
+                      },
+                      "cpus": {
+                        "type": "integer"
+                      },
+                      "mem": {
+                        "type": "integer"
+                      },
+                      "disk": {
+                        "type": "integer"
+                      },
+                      "diskread": {
+                        "type": "integer"
+                      },
+                      "diskwrite": {
+                        "type": "integer"
+                      },
+                      "netin": {
+                        "type": "integer"
+                      },
+                      "netout": {
+                        "type": "integer"
+                      }
                     },
                     "additionalProperties": true
                   }
@@ -451,7 +633,9 @@
             "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
               }
             }
           },
@@ -459,7 +643,9 @@
             "description": "Запитаний контейнер або вузол не знайдено.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
               }
             }
           },
@@ -467,7 +653,9 @@
             "description": "Внутрішня помилка контролера або Proxmox.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/InternalServerError"}
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
+                }
               }
             }
           }
@@ -478,7 +666,9 @@
       "post": {
         "summary": "Запустити LXC контейнер",
         "operationId": "startLXC",
-        "tags": ["LXC"],
+        "tags": [
+          "LXC"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -486,7 +676,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "node": { "type": "string", "description": "Вузол (опціонально)" },
+                  "node": {
+                    "type": "string",
+                    "description": "Вузол (опціонально)"
+                  },
                   "vmid": {
                     "type": "integer",
                     "description": "ID контейнера",
@@ -494,14 +687,21 @@
                     "maximum": 999
                   }
                 },
-                "required": ["vmid"]
+                "required": [
+                  "vmid"
+                ]
               },
               "examples": {
                 "simple": {
-                  "value": { "vmid": 100 }
+                  "value": {
+                    "vmid": 100
+                  }
                 },
                 "with_node": {
-                  "value": { "node": "pve", "vmid": 100 }
+                  "value": {
+                    "node": "pve",
+                    "vmid": 100
+                  }
                 }
               }
             }
@@ -515,8 +715,13 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "ok": { "type": "boolean" },
-                    "task": { "type": "string", "description": "UPID завдання Proxmox" }
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "task": {
+                      "type": "string",
+                      "description": "UPID завдання Proxmox"
+                    }
                   }
                 }
               }
@@ -526,7 +731,9 @@
             "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
               }
             }
           },
@@ -534,7 +741,9 @@
             "description": "Запитаний контейнер або вузол не знайдено.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
               }
             }
           },
@@ -542,7 +751,9 @@
             "description": "Внутрішня помилка контролера або Proxmox.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/InternalServerError"}
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
+                }
               }
             }
           }
@@ -553,13 +764,18 @@
       "post": {
         "summary": "Зупинити LXC контейнер",
         "operationId": "stopLXC",
-        "tags": ["LXC"],
+        "tags": [
+          "LXC"
+        ],
         "parameters": [
           {
             "name": "force",
             "in": "query",
             "required": false,
-            "schema": { "type": "boolean", "default": false },
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
             "description": "Форсована зупинка"
           }
         ],
@@ -570,14 +786,18 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "node": { "type": "string" },
+                  "node": {
+                    "type": "string"
+                  },
                   "vmid": {
                     "type": "integer",
                     "minimum": 100,
                     "maximum": 999
                   }
                 },
-                "required": ["vmid"]
+                "required": [
+                  "vmid"
+                ]
               }
             }
           }
@@ -590,8 +810,13 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "ok": { "type": "boolean" },
-                    "task": { "type": "string", "description": "UPID завдання Proxmox" }
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "task": {
+                      "type": "string",
+                      "description": "UPID завдання Proxmox"
+                    }
                   }
                 }
               }
@@ -601,7 +826,9 @@
             "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
               }
             }
           },
@@ -609,7 +836,9 @@
             "description": "Запитаний контейнер або вузол не знайдено.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
               }
             }
           },
@@ -617,7 +846,9 @@
             "description": "Внутрішня помилка контролера або Proxmox.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/InternalServerError"}
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
+                }
               }
             }
           }
@@ -628,7 +859,9 @@
       "post": {
         "summary": "Створити новий LXC контейнер",
         "operationId": "createLXC",
-        "tags": ["LXC"],
+        "tags": [
+          "LXC"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -661,14 +894,21 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "created": { "type": "boolean" },
-                    "task": { "type": "string", "description": "UPID завдання Proxmox" },
+                    "created": {
+                      "type": "boolean"
+                    },
+                    "task": {
+                      "type": "string",
+                      "description": "UPID завдання Proxmox"
+                    },
                     "vmid": {
                       "type": "integer",
                       "minimum": 100,
                       "maximum": 999
                     },
-                    "node": { "type": "string" }
+                    "node": {
+                      "type": "string"
+                    }
                   }
                 }
               }
@@ -678,7 +918,9 @@
             "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
               }
             }
           },
@@ -686,7 +928,9 @@
             "description": "Запитаний контейнер або вузол не знайдено.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
               }
             }
           },
@@ -694,7 +938,9 @@
             "description": "Внутрішня помилка контролера або Proxmox.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/InternalServerError"}
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
+                }
               }
             }
           }
@@ -705,7 +951,9 @@
       "post": {
         "summary": "Виконати команду в LXC контейнері",
         "operationId": "execInLXC",
-        "tags": ["LXC"],
+        "tags": [
+          "LXC"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -726,21 +974,39 @@
                   "commands": {
                     "type": "array",
                     "description": "Альтернатива до 'cmd': список команд, які виконуються послідовно з тими самими обмеженнями, що й для 'cmd'",
-                    "items": { "type": "string" }
+                    "items": {
+                      "type": "string"
+                    }
                   }
                 },
-                "required": ["vmid"],
+                "required": [
+                  "vmid"
+                ],
                 "anyOf": [
-                  { "required": ["cmd"] },
-                  { "required": ["commands"] }
+                  {
+                    "required": [
+                      "cmd"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "commands"
+                    ]
+                  }
                 ]
               },
               "examples": {
                 "list_files": {
-                  "value": { "vmid": 100, "cmd": "ls -la /opt" }
+                  "value": {
+                    "vmid": 100,
+                    "cmd": "ls -la /opt"
+                  }
                 },
                 "install_package": {
-                  "value": { "vmid": 100, "cmd": "apt-get update && apt-get install -y nginx" }
+                  "value": {
+                    "vmid": 100,
+                    "cmd": "apt-get update && apt-get install -y nginx"
+                  }
                 },
                 "install_multiple": {
                   "value": {
@@ -752,7 +1018,10 @@
                   }
                 },
                 "check_service": {
-                  "value": { "vmid": 100, "cmd": "systemctl status nginx" }
+                  "value": {
+                    "vmid": 100,
+                    "cmd": "systemctl status nginx"
+                  }
                 }
               }
             }
@@ -766,9 +1035,18 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "rc": { "type": "integer", "description": "Return code" },
-                    "stdout": { "type": "string", "description": "Standard output" },
-                    "stderr": { "type": "string", "description": "Standard error" }
+                    "rc": {
+                      "type": "integer",
+                      "description": "Return code"
+                    },
+                    "stdout": {
+                      "type": "string",
+                      "description": "Standard output"
+                    },
+                    "stderr": {
+                      "type": "string",
+                      "description": "Standard error"
+                    }
                   }
                 }
               }
@@ -778,7 +1056,9 @@
             "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
               }
             }
           },
@@ -786,7 +1066,9 @@
             "description": "Запитаний контейнер або вузол не знайдено.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
               }
             }
           },
@@ -794,7 +1076,9 @@
             "description": "Внутрішня помилка контролера або Proxmox.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/InternalServerError"}
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
+                }
               }
             }
           }
@@ -805,7 +1089,9 @@
       "post": {
         "summary": "Деплой коду з Git в LXC контейнер",
         "operationId": "deployToLXC",
-        "tags": ["Deploy"],
+        "tags": [
+          "Deploy"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -857,16 +1143,30 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "ok": { "type": "boolean" },
+                    "ok": {
+                      "type": "boolean"
+                    },
                     "steps": {
                       "type": "array",
                       "items": {
                         "type": "object",
                         "properties": {
-                          "cmd": { "type": "string", "description": "Команда, що виконувалась" },
-                          "rc": { "type": "integer", "description": "Код завершення" },
-                          "stdout": { "type": "string", "description": "Стандартний вивід" },
-                          "stderr": { "type": "string", "description": "Стандартний потік помилок" }
+                          "cmd": {
+                            "type": "string",
+                            "description": "Команда, що виконувалась"
+                          },
+                          "rc": {
+                            "type": "integer",
+                            "description": "Код завершення"
+                          },
+                          "stdout": {
+                            "type": "string",
+                            "description": "Стандартний вивід"
+                          },
+                          "stderr": {
+                            "type": "string",
+                            "description": "Стандартний потік помилок"
+                          }
                         }
                       }
                     }
@@ -879,7 +1179,9 @@
             "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
               }
             }
           },
@@ -887,7 +1189,9 @@
             "description": "Запитаний контейнер або вузол не знайдено.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
               }
             }
           },
@@ -895,7 +1199,9 @@
             "description": "Внутрішня помилка контролера або Proxmox.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/InternalServerError"}
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
+                }
               }
             }
           }
@@ -906,7 +1212,9 @@
       "post": {
         "summary": "Виконати команду через SSH на будь-якому сервері",
         "operationId": "sshRun",
-        "tags": ["SSH"],
+        "tags": [
+          "SSH"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -931,9 +1239,18 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "rc": { "type": "integer", "description": "Код завершення" },
-                    "stdout": { "type": "string", "description": "Стандартний вивід" },
-                    "stderr": { "type": "string", "description": "Стандартний потік помилок" }
+                    "rc": {
+                      "type": "integer",
+                      "description": "Код завершення"
+                    },
+                    "stdout": {
+                      "type": "string",
+                      "description": "Стандартний вивід"
+                    },
+                    "stderr": {
+                      "type": "string",
+                      "description": "Стандартний потік помилок"
+                    }
                   }
                 }
               }
@@ -943,7 +1260,9 @@
             "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
               }
             }
           },
@@ -951,7 +1270,9 @@
             "description": "Запитаний контейнер або вузол не знайдено.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
               }
             }
           },
@@ -959,7 +1280,9 @@
             "description": "Внутрішня помилка контролера або Proxmox.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/InternalServerError"}
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
+                }
               }
             }
           }
@@ -971,7 +1294,9 @@
         "summary": "Запустити програму на віддаленому сервері",
         "description": "Виконує команду через SSH. Поле ``program`` приймає виконуваний файл (назву в ``$PATH`` або абсолютний шлях), а ``args`` — масив окремих аргументів, які екрануються автоматично. Прапорець ``background`` керує запуском через ``nohup``: якщо ``true``, процес стартує у фоні, stdout/stderr записуються у ``/tmp/<program>.log`` і у відповідь повертається PID; якщо ``false``, команда виконується синхронно й потоки повертаються напряму. Поле ``display`` (наприклад, ``:0``) додає однойменну змінну середовища для GUI-програм.",
         "operationId": "launchRemoteApp",
-        "tags": ["Apps"],
+        "tags": [
+          "Apps"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -983,7 +1308,9 @@
                 "host": "192.168.1.120",
                 "user": "devops",
                 "program": "code",
-                "args": ["/opt/project"],
+                "args": [
+                  "/opt/project"
+                ],
                 "background": true,
                 "display": ":0"
               }
@@ -998,9 +1325,18 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "rc": { "type": "integer", "description": "Код завершення" },
-                    "stdout": { "type": "string", "description": "Стандартний вивід (у фоновому режимі містить PID процесу)" },
-                    "stderr": { "type": "string", "description": "Стандартний потік помилок" }
+                    "rc": {
+                      "type": "integer",
+                      "description": "Код завершення"
+                    },
+                    "stdout": {
+                      "type": "string",
+                      "description": "Стандартний вивід (у фоновому режимі містить PID процесу)"
+                    },
+                    "stderr": {
+                      "type": "string",
+                      "description": "Стандартний потік помилок"
+                    }
                   }
                 }
               }
@@ -1010,7 +1346,9 @@
             "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
               }
             }
           },
@@ -1018,7 +1356,9 @@
             "description": "Запитаний контейнер або вузол не знайдено.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
               }
             }
           },
@@ -1026,7 +1366,9 @@
             "description": "Внутрішня помилка контролера або Proxmox.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/InternalServerError"}
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
+                }
               }
             }
           }
@@ -1038,7 +1380,9 @@
         "summary": "Відкрити URL в браузері на віддаленому сервері",
         "description": "Запускає браузер через SSH. Поле ``action`` підтримує ``open`` (просто завантажити сторінку), ``screenshot`` (зберегти PNG) та ``pdf`` (друк сторінки у PDF). У headless-режимі шукає перший доступний двійковий файл зі списку ``browser_cmds``: для ``screenshot``/``pdf`` результат записується у ``output_path`` або типовий ``/tmp/screenshot.png``/``/tmp/page.pdf``. У GUI-режимі URL відкривається в інтерактивному вікні через ``xdg-open`` або Firefox/Chrome.",
         "operationId": "browserOpen",
-        "tags": ["Browser"],
+        "tags": [
+          "Browser"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -1065,10 +1409,21 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "rc": { "type": "integer" },
-                    "stdout": { "type": "string", "description": "Стандартний вивід команди браузера" },
-                    "stderr": { "type": "string", "description": "Стандартний потік помилок" },
-                    "used": { "type": "string", "description": "Який браузер/інструмент було використано" }
+                    "rc": {
+                      "type": "integer"
+                    },
+                    "stdout": {
+                      "type": "string",
+                      "description": "Стандартний вивід команди браузера"
+                    },
+                    "stderr": {
+                      "type": "string",
+                      "description": "Стандартний потік помилок"
+                    },
+                    "used": {
+                      "type": "string",
+                      "description": "Який браузер/інструмент було використано"
+                    }
                   }
                 }
               }
@@ -1078,7 +1433,9 @@
             "description": "Невірні параметри запиту (невалідний vmid, відсутні обов'язкові поля тощо).",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/BadRequestError"}
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
               }
             }
           },
@@ -1086,7 +1443,9 @@
             "description": "Запитаний контейнер або вузол не знайдено.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/NotFoundError"}
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
               }
             }
           },
@@ -1094,7 +1453,573 @@
             "description": "Внутрішня помилка контролера або Proxmox.",
             "content": {
               "application/json": {
-                "schema": {"$ref": "#/components/schemas/InternalServerError"}
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bliss/adb/devices": {
+      "get": {
+        "summary": "Список ADB-пристроїв BlissOS",
+        "description": "Виконує `adb devices -l` і повертає сирий вивід разом зі списком розпарсених пристроїв.",
+        "operationId": "listBlissADBDevices",
+        "tags": [
+          "BlissOS"
+        ],
+        "responses": {
+          "200": {
+            "description": "Результат виконання adb devices",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rc": {
+                      "type": "integer",
+                      "description": "Код завершення adb"
+                    },
+                    "stdout": {
+                      "type": "string",
+                      "description": "Стандартний вивід"
+                    },
+                    "stderr": {
+                      "type": "string",
+                      "description": "Стандартний потік помилок"
+                    },
+                    "devices": {
+                      "type": "array",
+                      "description": "Розпарсений список пристроїв",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "serial": {
+                            "type": "string"
+                          },
+                          "state": {
+                            "type": "string"
+                          },
+                          "extras": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "additionalProperties": true,
+                            "description": "Додаткові атрибути (model=..., device=..., descriptors тощо)"
+                          }
+                        },
+                        "required": [
+                          "serial",
+                          "state"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "rc",
+                    "stdout",
+                    "stderr",
+                    "devices"
+                  ]
+                },
+                "example": {
+                  "rc": 0,
+                  "stdout": "List of devices attached\n192.168.1.218:5555    device product=bliss model=BlissOS\n",
+                  "stderr": "",
+                  "devices": [
+                    {
+                      "serial": "192.168.1.218:5555",
+                      "state": "device",
+                      "extras": {
+                        "product": "bliss",
+                        "model": "BlissOS"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Невірні параметри або adb недоступний",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Помилка виконання adb",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bliss/adb/connect": {
+      "post": {
+        "summary": "Підключення до BlissOS через adb connect",
+        "description": "Виконує послідовність `adb disconnect` (опційно), `adb connect` і, за потреби, `adb wait-for-device`.",
+        "operationId": "connectBlissADB",
+        "tags": [
+          "BlissOS"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlissADBConnectSpec"
+              },
+              "example": {
+                "host": "192.168.1.218",
+                "port": 5555,
+                "force_disconnect": true,
+                "wait_for_device": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Стан підключення",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "address": {
+                      "type": "string",
+                      "description": "Цільове host:port"
+                    },
+                    "connected": {
+                      "type": "boolean",
+                      "description": "Чи успішно підключились"
+                    },
+                    "steps": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "action": {
+                            "type": "string"
+                          },
+                          "rc": {
+                            "type": "integer"
+                          },
+                          "stdout": {
+                            "type": "string"
+                          },
+                          "stderr": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "action",
+                          "rc",
+                          "stdout",
+                          "stderr"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "address",
+                    "connected",
+                    "steps"
+                  ]
+                },
+                "example": {
+                  "address": "192.168.1.218:5555",
+                  "connected": true,
+                  "steps": [
+                    {
+                      "action": "disconnect",
+                      "rc": 0,
+                      "stdout": "disconnected 192.168.1.218:5555",
+                      "stderr": ""
+                    },
+                    {
+                      "action": "connect",
+                      "rc": 0,
+                      "stdout": "connected to 192.168.1.218:5555",
+                      "stderr": ""
+                    },
+                    {
+                      "action": "wait-for-device",
+                      "rc": 0,
+                      "stdout": "",
+                      "stderr": ""
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Невірні параметри запиту",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Помилка adb",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bliss/adb/disconnect": {
+      "post": {
+        "summary": "Роз'єднання adb",
+        "description": "Виконує `adb disconnect --all` або `adb disconnect <host:port>`.",
+        "operationId": "disconnectBlissADB",
+        "tags": [
+          "BlissOS"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlissADBDisconnectSpec"
+              },
+              "examples": {
+                "single": {
+                  "summary": "Роз'єднання конкретної адреси",
+                  "value": {
+                    "host": "192.168.1.218",
+                    "port": 5555
+                  }
+                },
+                "all": {
+                  "summary": "Роз'єднати всі підключення",
+                  "value": {
+                    "all": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Результат adb disconnect",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "target": {
+                      "type": "string",
+                      "description": "Опис цілі (host:port або 'all')"
+                    },
+                    "rc": {
+                      "type": "integer",
+                      "description": "Код завершення"
+                    },
+                    "stdout": {
+                      "type": "string"
+                    },
+                    "stderr": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "target",
+                    "rc",
+                    "stdout",
+                    "stderr"
+                  ]
+                },
+                "example": {
+                  "target": "192.168.1.218:5555",
+                  "rc": 0,
+                  "stdout": "disconnected 192.168.1.218:5555",
+                  "stderr": ""
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Невірні параметри",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Помилка adb",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bliss/adb/shell": {
+      "post": {
+        "summary": "Виконання команд через adb shell",
+        "description": "Послідовно виконує одну або кілька команд через `adb shell` (опційно обгортаючи в `su -c`).",
+        "operationId": "shellBlissADB",
+        "tags": [
+          "BlissOS"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlissADBShellSpec"
+              },
+              "examples": {
+                "single": {
+                  "summary": "Одна команда",
+                  "value": {
+                    "serial": "192.168.1.218:5555",
+                    "cmd": "settings get secure wifi_on"
+                  }
+                },
+                "multiple": {
+                  "summary": "Послідовність команд",
+                  "value": {
+                    "host": "192.168.1.218",
+                    "port": 5555,
+                    "commands": [
+                      "input keyevent 26",
+                      "input swipe 0 0 1080 0"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Результати виконання команд",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "serial": {
+                      "type": "string"
+                    },
+                    "ok": {
+                      "type": "boolean",
+                      "description": "true, якщо всі команди завершились успішно"
+                    },
+                    "steps": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "command": {
+                            "type": "string"
+                          },
+                          "rc": {
+                            "type": "integer"
+                          },
+                          "stdout": {
+                            "type": "string"
+                          },
+                          "stderr": {
+                            "type": "string"
+                          },
+                          "used_su": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "command",
+                          "rc",
+                          "stdout",
+                          "stderr",
+                          "used_su"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "serial",
+                    "ok",
+                    "steps"
+                  ]
+                },
+                "example": {
+                  "serial": "192.168.1.218:5555",
+                  "ok": true,
+                  "steps": [
+                    {
+                      "command": "settings get secure wifi_on",
+                      "rc": 0,
+                      "stdout": "1\n",
+                      "stderr": "",
+                      "used_su": false
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Невірні параметри або команда",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Помилка adb",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bliss/adb/command": {
+      "post": {
+        "summary": "Будь-яка команда adb",
+        "description": "Виконує довільну команду `adb` (наприклад, install, pull, am start).",
+        "operationId": "commandBlissADB",
+        "tags": [
+          "BlissOS"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlissADBCommandSpec"
+              },
+              "examples": {
+                "args": {
+                  "summary": "Формат args",
+                  "value": {
+                    "serial": "192.168.1.218:5555",
+                    "args": [
+                      "install",
+                      "/tmp/app.apk"
+                    ]
+                  }
+                },
+                "command": {
+                  "summary": "Формат рядка",
+                  "value": {
+                    "host": "192.168.1.218",
+                    "port": 5555,
+                    "command": "shell am start -a android.settings.WIFI_SETTINGS"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Результат виконання adb",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "serial": {
+                      "type": "string"
+                    },
+                    "args": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Команда, передана у adb після нормалізації"
+                    },
+                    "rc": {
+                      "type": "integer"
+                    },
+                    "stdout": {
+                      "type": "string"
+                    },
+                    "stderr": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "serial",
+                    "args",
+                    "rc",
+                    "stdout",
+                    "stderr"
+                  ]
+                },
+                "example": {
+                  "serial": "192.168.1.218:5555",
+                  "args": [
+                    "shell",
+                    "am",
+                    "start",
+                    "-a",
+                    "android.settings.WIFI_SETTINGS"
+                  ],
+                  "rc": 0,
+                  "stdout": "Starting: Intent { act=android.settings.WIFI_SETTINGS }",
+                  "stderr": ""
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Невірні параметри",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Помилка adb",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerError"
+                }
               }
             }
           }
@@ -1107,26 +2032,49 @@
       "CreateLXCRequest": {
         "type": "object",
         "properties": {
-          "node": { "type": "string", "description": "Proxmox node (optional)" },
+          "node": {
+            "type": "string",
+            "description": "Proxmox node (optional)"
+          },
           "vmid": {
             "type": "integer",
             "description": "Container ID (допустимі значення 100-999)",
             "minimum": 100,
             "maximum": 999
           },
-          "hostname": { "type": "string", "description": "Container hostname" },
-          "cores": { "type": "integer", "default": 2, "minimum": 1 },
-          "memory": { "type": "integer", "default": 2048, "minimum": 128, "description": "RAM in MB" },
+          "hostname": {
+            "type": "string",
+            "description": "Container hostname"
+          },
+          "cores": {
+            "type": "integer",
+            "default": 2,
+            "minimum": 1
+          },
+          "memory": {
+            "type": "integer",
+            "default": 2048,
+            "minimum": 128,
+            "description": "RAM in MB"
+          },
           "storage": {
             "type": "string",
             "description": "Storage name",
-            "enum": ["local-lvm"]
+            "enum": [
+              "local-lvm"
+            ]
           },
-          "rootfs_gb": { "type": "integer", "default": 16, "minimum": 4 },
+          "rootfs_gb": {
+            "type": "integer",
+            "default": 16,
+            "minimum": 4
+          },
           "bridge": {
             "type": "string",
             "default": "vmbr0",
-            "enum": ["vmbr0"],
+            "enum": [
+              "vmbr0"
+            ],
             "description": "Network bridge"
           },
           "ip_cidr": {
@@ -1134,14 +2082,28 @@
             "description": "IP address with CIDR у підмережі 192.168.1.100-192.168.1.250/24",
             "pattern": "^192\\.168\\.1\\.(?:1\\d\\d|2[0-4]\\d|250)/24$"
           },
-          "gateway": { "type": "string", "description": "Gateway IP" },
-          "ssh_public_key": { "type": "string", "description": "SSH public key for root" },
-          "password": { "type": "string", "description": "Root password" },
-          "unprivileged": { "type": "boolean", "default": true },
+          "gateway": {
+            "type": "string",
+            "description": "Gateway IP"
+          },
+          "ssh_public_key": {
+            "type": "string",
+            "description": "SSH public key for root"
+          },
+          "password": {
+            "type": "string",
+            "description": "Root password"
+          },
+          "unprivileged": {
+            "type": "boolean",
+            "default": true
+          },
           "features": {
             "type": "object",
             "description": "Додаткові прапорці pct (наприклад, {\"nesting\": 1, \"keyctl\": 1})",
-            "additionalProperties": { "type": "integer" }
+            "additionalProperties": {
+              "type": "integer"
+            }
           },
           "ostemplate": {
             "type": "string",
@@ -1151,9 +2113,18 @@
               "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst"
             ]
           },
-          "start": { "type": "boolean", "default": true, "description": "Start after creation" }
+          "start": {
+            "type": "boolean",
+            "default": true,
+            "description": "Start after creation"
+          }
         },
-        "required": ["vmid", "hostname", "storage", "ostemplate"]
+        "required": [
+          "vmid",
+          "hostname",
+          "storage",
+          "ostemplate"
+        ]
       },
       "DeploySpec": {
         "type": "object",
@@ -1165,11 +2136,20 @@
             "minimum": 100,
             "maximum": 999
           },
-          "repo_url": { "type": "string", "description": "URL Git репозиторію" },
-          "workdir": { "type": "string", "default": "/opt/app", "description": "Каталог у контейнері для коду" },
+          "repo_url": {
+            "type": "string",
+            "description": "URL Git репозиторію"
+          },
+          "workdir": {
+            "type": "string",
+            "default": "/opt/app",
+            "description": "Каталог у контейнері для коду"
+          },
           "setup": {
             "type": "array",
-            "items": { "type": "string" },
+            "items": {
+              "type": "string"
+            },
             "description": "Команди підготовки (встановлення пакетів, налаштування оточення).",
             "default": [
               "apt-get update",
@@ -1178,7 +2158,9 @@
           },
           "commands": {
             "type": "array",
-            "items": { "type": "string" },
+            "items": {
+              "type": "string"
+            },
             "description": "Основні кроки деплою. Підтримують шаблони ``{{repo_url}}`` та ``{{workdir}}``.",
             "default": [
               "git clone {{repo_url}} {{workdir}} || (rm -rf {{workdir}} && git clone {{repo_url}} {{workdir}})",
@@ -1188,15 +2170,30 @@
             ]
           }
         },
-        "required": ["target_vmid", "repo_url"]
+        "required": [
+          "target_vmid",
+          "repo_url"
+        ]
       },
       "SSHSpec": {
         "type": "object",
         "description": "Параметри SSH-з'єднання. Вкажіть один з методів автентифікації: password, key_path або key_data_b64. Якщо жоден спосіб не задано, контролер використає попередньо налаштований ключ (наприклад, з ENV чи /keys/pve_id_rsa).",
         "anyOf": [
-          { "required": ["password"] },
-          { "required": ["key_path"] },
-          { "required": ["key_data_b64"] }
+          {
+            "required": [
+              "password"
+            ]
+          },
+          {
+            "required": [
+              "key_path"
+            ]
+          },
+          {
+            "required": [
+              "key_data_b64"
+            ]
+          }
         ],
         "properties": {
           "host": {
@@ -1214,7 +2211,10 @@
             "default": 22,
             "description": "SSH-порт для випадків, коли host не містить власного значення. Може бути заданий через DEFAULT_SSH_PORT або PVE_SSH_PORT."
           },
-          "cmd": { "type": "string", "description": "Команда, яку потрібно виконати" },
+          "cmd": {
+            "type": "string",
+            "description": "Команда, яку потрібно виконати"
+          },
           "key_path": {
             "type": "string",
             "description": "Шлях до приватного ключа на контролері (наприклад, /keys/pve_id_rsa). Якщо не задано, використовується DEFAULT_SSH_KEY_PATH/PVE_SSH_KEY_PATH або інший попередньо налаштований ключ."
@@ -1235,11 +2235,18 @@
           "env": {
             "type": "object",
             "description": "Додаткові змінні середовища для команди",
-            "additionalProperties": { "type": "string" }
+            "additionalProperties": {
+              "type": "string"
+            }
           },
-          "cwd": { "type": "string", "description": "Каталог, у якому буде виконано команду" }
+          "cwd": {
+            "type": "string",
+            "description": "Каталог, у якому буде виконано команду"
+          }
         },
-        "required": ["cmd"]
+        "required": [
+          "cmd"
+        ]
       },
       "AppLaunchSpec": {
         "type": "object",
@@ -1281,16 +2288,23 @@
           },
           "args": {
             "type": "array",
-            "items": { "type": "string" },
+            "items": {
+              "type": "string"
+            },
             "description": "Аргументи командного рядка (кожен елемент передається як окремий токен і екранується автоматично)",
             "default": []
           },
           "env": {
             "type": "object",
             "description": "Додаткові змінні середовища",
-            "additionalProperties": { "type": "string" }
+            "additionalProperties": {
+              "type": "string"
+            }
           },
-          "cwd": { "type": "string", "description": "Каталог виконання" },
+          "cwd": {
+            "type": "string",
+            "description": "Каталог виконання"
+          },
           "background": {
             "type": "boolean",
             "default": true,
@@ -1301,7 +2315,9 @@
             "description": "DISPLAY для GUI (наприклад, ``:0``); при заданні додається однойменна змінна середовища"
           }
         },
-        "required": ["program"]
+        "required": [
+          "program"
+        ]
       },
       "BrowserSpec": {
         "type": "object",
@@ -1339,11 +2355,17 @@
           },
           "action": {
             "type": "string",
-            "enum": ["open", "screenshot", "pdf"],
+            "enum": [
+              "open",
+              "screenshot",
+              "pdf"
+            ],
             "default": "open",
             "description": "``open`` — просто відкриває URL, ``screenshot`` — зберігає PNG-скріншот, ``pdf`` — формує друк сторінки у PDF"
           },
-          "url": { "type": "string" },
+          "url": {
+            "type": "string"
+          },
           "headless": {
             "type": "boolean",
             "default": true,
@@ -1351,10 +2373,20 @@
           },
           "browser_cmds": {
             "type": "array",
-            "items": { "type": "string" },
-            "default": ["google-chrome", "chromium-browser", "chromium"]
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              "google-chrome",
+              "chromium-browser",
+              "chromium"
+            ]
           },
-          "window_size": { "type": "string", "default": "1280,800", "description": "Розмір вікна для headless режиму" },
+          "window_size": {
+            "type": "string",
+            "default": "1280,800",
+            "description": "Розмір вікна для headless режиму"
+          },
           "user_data_dir": {
             "type": "string",
             "description": "Каталог профілю браузера на віддаленій машині"
@@ -1365,38 +2397,222 @@
           },
           "extra_args": {
             "type": "array",
-            "items": { "type": "string" },
+            "items": {
+              "type": "string"
+            },
             "description": "Додаткові аргументи командного рядка для браузера"
           }
         },
-        "required": ["url"]
+        "required": [
+          "url"
+        ]
       },
       "BadRequestError": {
         "type": "object",
         "description": "Помилка вхідних параметрів або тіла запиту.",
-        "required": ["detail"],
+        "required": [
+          "detail"
+        ],
         "properties": {
-          "detail": {"type": "string", "description": "Пояснення, які параметри запиту невалідні або відсутні."}
+          "detail": {
+            "type": "string",
+            "description": "Пояснення, які параметри запиту невалідні або відсутні."
+          }
         },
-        "example": {"detail": "Invalid vmid: must be between 100 and 999."}
+        "example": {
+          "detail": "Invalid vmid: must be between 100 and 999."
+        }
       },
       "NotFoundError": {
         "type": "object",
         "description": "Ресурс (вузол чи контейнер) не знайдено.",
-        "required": ["detail"],
+        "required": [
+          "detail"
+        ],
         "properties": {
-          "detail": {"type": "string", "description": "Описує, який ресурс не вдалося знайти."}
+          "detail": {
+            "type": "string",
+            "description": "Описує, який ресурс не вдалося знайти."
+          }
         },
-        "example": {"detail": "LXC container 123 not found on node pve."}
+        "example": {
+          "detail": "LXC container 123 not found on node pve."
+        }
       },
       "InternalServerError": {
         "type": "object",
         "description": "Внутрішня помилка контролера або Proxmox.",
-        "required": ["detail"],
+        "required": [
+          "detail"
+        ],
         "properties": {
-          "detail": {"type": "string", "description": "Описує причину внутрішньої помилки."}
+          "detail": {
+            "type": "string",
+            "description": "Описує причину внутрішньої помилки."
+          }
         },
-        "example": {"detail": "Proxmox API call failed: connection refused."}
+        "example": {
+          "detail": "Proxmox API call failed: connection refused."
+        }
+      },
+      "BlissADBConnectSpec": {
+        "type": "object",
+        "description": "Параметри для adb connect",
+        "properties": {
+          "serial": {
+            "type": "string",
+            "description": "ADB серійний номер або host:port. Має пріоритет над host/port.",
+            "example": "192.168.1.218:5555"
+          },
+          "host": {
+            "type": "string",
+            "description": "IP або hostname BlissOS для TCP ADB.",
+            "example": "192.168.1.218"
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535,
+            "description": "TCP-порт ADB",
+            "default": 5555
+          },
+          "force_disconnect": {
+            "type": "boolean",
+            "description": "Спочатку виконати adb disconnect target",
+            "default": false
+          },
+          "wait_for_device": {
+            "type": "boolean",
+            "description": "Почекати пристрій через adb wait-for-device",
+            "default": true
+          },
+          "timeout": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 600,
+            "description": "Таймаут підключення у секундах",
+            "default": 20
+          }
+        }
+      },
+      "BlissADBDisconnectSpec": {
+        "type": "object",
+        "description": "Параметри для adb disconnect",
+        "properties": {
+          "serial": {
+            "type": "string",
+            "description": "ADB серійний номер або host:port",
+            "example": "192.168.1.218:5555"
+          },
+          "host": {
+            "type": "string",
+            "description": "IP або hostname BlissOS",
+            "example": "192.168.1.218"
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535,
+            "description": "TCP-порт ADB",
+            "default": 5555
+          },
+          "all": {
+            "type": "boolean",
+            "description": "Якщо true — adb disconnect --all",
+            "default": false
+          }
+        }
+      },
+      "BlissADBShellSpec": {
+        "type": "object",
+        "description": "Специфікація команд для adb shell",
+        "properties": {
+          "serial": {
+            "type": "string",
+            "description": "ADB серійний номер або host:port",
+            "example": "192.168.1.218:5555"
+          },
+          "host": {
+            "type": "string",
+            "description": "IP або hostname BlissOS",
+            "example": "192.168.1.218"
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535,
+            "description": "TCP-порт ADB",
+            "default": 5555
+          },
+          "cmd": {
+            "type": "string",
+            "description": "Одна команда для adb shell",
+            "example": "settings get secure wifi_on"
+          },
+          "commands": {
+            "type": "array",
+            "description": "Послідовність команд",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "timeout": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1800,
+            "description": "Таймаут для кожної команди",
+            "default": 60
+          },
+          "use_su": {
+            "type": "boolean",
+            "description": "Обгорнути команду у su -c",
+            "default": false
+          }
+        }
+      },
+      "BlissADBCommandSpec": {
+        "type": "object",
+        "description": "Специфікація для довільних adb команд",
+        "properties": {
+          "serial": {
+            "type": "string",
+            "description": "ADB серійний номер або host:port",
+            "example": "192.168.1.218:5555"
+          },
+          "host": {
+            "type": "string",
+            "description": "IP або hostname BlissOS",
+            "example": "192.168.1.218"
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535,
+            "description": "TCP-порт ADB",
+            "default": 5555
+          },
+          "command": {
+            "type": "string",
+            "description": "Повна adb команда (без слова 'adb')",
+            "example": "shell am start -a android.settings.WIFI_SETTINGS"
+          },
+          "args": {
+            "type": "array",
+            "description": "Команда у форматі списку",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "timeout": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1800,
+            "description": "Таймаут виконання",
+            "default": 60
+          }
+        }
       }
     }
   }
