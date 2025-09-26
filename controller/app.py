@@ -17,7 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from proxmoxer import ProxmoxAPI
 import paramiko
 
-from agent_profile import get_agent_profile
+from .agent_profile import get_agent_profile
 
 # ─────────────────────────────────────────────
 # Логування
