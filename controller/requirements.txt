@@ -5,3 +5,5 @@ pydantic~=2.7
 requests~=2.32
 psutil~=5.9
 paramiko~=3.4
+beautifulsoup4~=4.12
+duckduckgo_search~=6.1
