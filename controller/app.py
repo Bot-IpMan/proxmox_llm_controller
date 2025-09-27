@@ -35,7 +35,34 @@ log = logging.getLogger("universal-controller")
 # FastAPI
 # ─────────────────────────────────────────────
 app = FastAPI(title="Universal LLM Controller", version="2.1.0")
-BLISS_OPENAPI_PATH = os.getenv("BLISS_OPENAPI_PATH")
+
+BLISS_OPENAPI_ENV = os.getenv("BLISS_OPENAPI_PATH")
+_BLISS_OPENAPI_CANDIDATES: Tuple[Path, ...] = (
+    Path("/app/openapi_bliss.json"),
+    Path(__file__).resolve().parent / "openapi_bliss.json",
+)
+
+
+def _resolve_bliss_openapi_path() -> Tuple[Optional[str], bool]:
+    """Return the OpenAPI path and whether it was auto-discovered."""
+
+    if BLISS_OPENAPI_ENV:
+        return BLISS_OPENAPI_ENV, False
+
+    for candidate in _BLISS_OPENAPI_CANDIDATES:
+        try:
+            if candidate.is_file():
+                log.info(
+                    "Auto-discovered BlissOS OpenAPI specification at %s", candidate
+                )
+                return str(candidate), True
+        except OSError:  # pragma: no cover - defensive guard
+            log.debug("Unable to stat BlissOS OpenAPI candidate %s", candidate)
+
+    return None, False
+
+
+BLISS_OPENAPI_PATH, BLISS_OPENAPI_AUTO = _resolve_bliss_openapi_path()
 
 # CORS (наприклад, якщо викликаєш з OpenWebUI з іншого походження)
 app.add_middleware(
@@ -67,8 +94,14 @@ def _load_bliss_openapi() -> Dict[str, Any]:
 
     path = BLISS_OPENAPI_PATH
     if not path:
-        log.warning("BLISS_OPENAPI_PATH is not configured; /openapi_bliss.json is unavailable")
-        raise FileNotFoundError("BlissOS OpenAPI specification is not configured.")
+        log.warning(
+            "BlissOS OpenAPI specification is unavailable: set BLISS_OPENAPI_PATH or "
+            "mount openapi_bliss.json"
+        )
+        raise FileNotFoundError(
+            "BlissOS OpenAPI specification is not configured. "
+            "Set BLISS_OPENAPI_PATH or place openapi_bliss.json next to the app."
+        )
 
     spec_path = Path(path)
     log.debug("Loading BlissOS OpenAPI specification from %s", spec_path)
@@ -99,8 +132,16 @@ def bliss_openapi_spec() -> Dict[str, Any]:
                 "BlissOS OpenAPI specification not found. "
                 f"Expected file at '{BLISS_OPENAPI_PATH}'."
             )
+        elif BLISS_OPENAPI_ENV:
+            detail = (
+                "BlissOS OpenAPI specification was configured but could not be loaded. "
+                f"Expected file at '{BLISS_OPENAPI_ENV}'."
+            )
         else:
-            detail = "BlissOS OpenAPI specification is not configured."
+            detail = (
+                "BlissOS OpenAPI specification is not configured. "
+                "Set BLISS_OPENAPI_PATH or mount /app/openapi_bliss.json."
+            )
         raise HTTPException(
             status_code=404,
             detail=detail,
@@ -113,11 +154,16 @@ class BlissOpenAPIStatus(BaseModel):
     """Diagnostic information for the optional BlissOS OpenAPI spec."""
 
     configured: bool = Field(
-        description="Whether BLISS_OPENAPI_PATH is configured in the environment.",
+        description=(
+            "Whether a BlissOS OpenAPI specification is configured or auto-discovered."
+        ),
     )
     path: Optional[str] = Field(
         default=None,
         description="Absolute path to the OpenAPI document if configured.",
+    )
+    auto_discovered: bool = Field(
+        description="True if the controller located the specification automatically.",
     )
     exists: bool = Field(description="Whether the configured file exists on disk.")
     size_bytes: Optional[int] = Field(
@@ -144,14 +190,16 @@ def bliss_openapi_status() -> BlissOpenAPIStatus:
 
     path = BLISS_OPENAPI_PATH
     configured = bool(path)
+    auto_discovered = BLISS_OPENAPI_AUTO
 
     if not configured:
         return BlissOpenAPIStatus(
             configured=False,
             path=None,
+            auto_discovered=False,
             exists=False,
             loadable=False,
-            error="BLISS_OPENAPI_PATH is not set.",
+            error="BLISS_OPENAPI_PATH is not set and no openapi_bliss.json was found.",
         )
 
     spec_path = Path(path)
@@ -180,6 +228,7 @@ def bliss_openapi_status() -> BlissOpenAPIStatus:
     return BlissOpenAPIStatus(
         configured=True,
         path=str(spec_path),
+        auto_discovered=auto_discovered,
         exists=exists,
         size_bytes=size_bytes,
         mtime_iso=mtime_iso,
