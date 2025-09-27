@@ -59,10 +59,33 @@
    * OpenWebUI доступна на порті `3000`.
    * Контролер Proxmox доступний на порті `8000` (використовується FastAPI).
 
-   > **Порада.** Якщо отримуєте помилку на кшталт «Connection failed» під час додавання OpenAPI‑специфікації в OpenWebUI,
-   > переконайтесь, що використовуєте правильний порт (`http://<host>:8000/openapi.json` або `http://<host>:8000/openapi_bliss.json`).
-   > За замовчуванням у `docker-compose.yml` проброшено саме порт `8000`; якщо ви вручну змінили його на інший (наприклад, `18000`),
-   > не забудьте використати нове значення і пересвідчитись, що контейнер `proxmox-controller` запущений (`docker ps`).
+  > **Порада.** Якщо отримуєте помилку на кшталт «Connection failed» під час додавання OpenAPI‑специфікації в OpenWebUI,
+  > переконайтесь, що використовуєте правильний порт (`http://<host>:8000/openapi.json` або `http://<host>:8000/openapi_bliss.json`).
+  > За замовчуванням у `docker-compose.yml` проброшено саме порт `8000`; якщо ви вручну змінили його на інший (наприклад, `18000`),
+  > не забудьте використати нове значення і пересвідчитись, що контейнер `proxmox-controller` запущений (`docker ps`).
+
+### Усунення проблем з підключенням OpenWebUI → контролера
+
+Найчастіша причина повідомлення «Connection failed» – OpenWebUI не може дістатись до FastAPI‑сервісу. Перевірте послідовно:
+
+1. **Використовуйте адресу всередині docker-мережі.**
+   * Якщо OpenWebUI працює в тому ж docker-compose, вкажіть `http://proxmox-controller:8000/openapi.json` (або `/openapi_bliss.json`).
+   * Якщо підключаєтесь іззовні (наприклад, з браузера на хості), використовуйте IP/домен хоста, на якому запущено `docker-compose`.
+2. **Переконайтесь, що ендпоінт доступний.**
+   ```sh
+   docker compose exec open-webui curl -f http://proxmox-controller:8000/openapi.json
+   docker compose exec open-webui curl -f http://proxmox-controller:8000/openapi_bliss.json
+   ```
+   Обидві команди мають повернути JSON. Якщо отримуєте помилку, перегляньте журнали контролера: `docker compose logs proxmox-controller`.
+   Якщо замість JSON повертається `403 Forbidden`, це означає, що файл `openapi_bliss.json` змонтовано без прав читання для користувача всередині контейнера. Виправте це командою `chmod 644 openapi_bliss.json` на хості або вкажіть свій шлях через `BLISS_OPENAPI_PATH` до файлу з коректними правами.
+3. **Перевірте налаштування BlissOS.**
+   ```sh
+   docker compose exec proxmox-controller curl -f http://localhost:8000/openapi_bliss/status | jq
+   ```
+   Поля `configured=true`, `readable=true` і `loadable=true` вказують на коректно підхоплену специфікацію. Якщо `configured=false`, додайте до `.env` рядок `BLISS_OPENAPI_PATH=/app/openapi_bliss.json` і перезапустіть стек. Якщо `readable=false`, перевірте права доступу (див. попередній пункт).
+4. **Оновіть довірені походження (за потреби).** Якщо OpenWebUI запускається не з того ж хоста або домену, додайте його в змінну `CORS_ALLOW_ORIGINS` (`http://192.168.1.191:3000,http://localhost:3000`).
+
+Після успішного запиту `curl …/openapi.json` інтерфейс OpenWebUI також має змогу імпортувати специфікацію без помилок.
 
 ## Виклик API
 
@@ -144,9 +167,10 @@ API-ендпоінти:
 * **Роз'єднання** – `POST /bliss/adb/disconnect {"all": true}` або з конкретною адресою.
 
 > Файл [`openapi_bliss.json`](openapi_bliss.json) містить окрему OpenAPI-специфікацію лише для BlissOS/ADB.
-> Якщо змінну `BLISS_OPENAPI_PATH` вказати на `/app/openapi_bliss.json` (у `docker-compose.yml` файл вже монтується в контейнер),
-> ендпоінт `GET /openapi_bliss.json` дозволить додати BlissOS як окремий інструмент в OpenWebUI або іншому клієнті. Основний
-> [`openapi.json`](openapi.json) також містить ці ендпоінти, тож їх можна використовувати і без додаткової специфікації.
+> Контролер автоматично підхоплює її з `/app/openapi_bliss.json` (файл уже монтується через `docker-compose.yml`),
+> але ви можете вказати інший шлях у змінній `BLISS_OPENAPI_PATH`. Ендпоінт `GET /openapi_bliss.json` дозволить додати BlissOS як
+> окремий інструмент в OpenWebUI або іншому клієнті. Основний [`openapi.json`](openapi.json) також містить ці ендпоінти, тож їх
+> можна використовувати і без додаткової специфікації. Перевірити стан можна через `GET /openapi_bliss/status`.
 
 #### Як сформулювати запит до ЛЛМ для дії в BlissOS
 
