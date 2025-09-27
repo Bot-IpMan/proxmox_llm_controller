@@ -82,6 +82,10 @@
    docker compose exec proxmox-controller curl -f http://localhost:8000/openapi_bliss/status | jq
    ```
    Поле `configured` має бути `true`, а `loadable` – `true`. Якщо `configured=false`, додайте до `.env` рядок `BLISS_OPENAPI_PATH=/app/openapi_bliss.json` і перезапустіть стек.
+   Якщо `loadable=false` або в логах контролера з'являється повідомлення про неможливість прочитати файл, переконайтесь, що
+   файл `openapi_bliss.json` дійсно змонтований у контейнер і має права читання (`chmod 644 openapi_bliss.json`).
+   Базовий образ вже містить копію `openapi_bliss.json` у каталозі `/app`, тож достатньо не видалити її або перевизначити
+   шлях через `BLISS_OPENAPI_PATH`.
 4. **Оновіть довірені походження (за потреби).** Якщо OpenWebUI запускається не з того ж хоста або домену, додайте його в змінну `CORS_ALLOW_ORIGINS` (`http://192.168.1.191:3000,http://localhost:3000`).
 
 Після успішного запиту `curl …/openapi.json` інтерфейс OpenWebUI також має змогу імпортувати специфікацію без помилок.
