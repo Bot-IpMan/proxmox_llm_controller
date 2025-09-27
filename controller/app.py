@@ -7,7 +7,9 @@ import socket
 import shutil
 from io import StringIO
 from functools import lru_cache
+from pathlib import Path
 from typing import Optional, Dict, Any, List, Tuple, Literal, ClassVar
+from datetime import datetime, timezone
 import re
 from string import Template
 
@@ -65,14 +67,23 @@ def _load_bliss_openapi() -> Dict[str, Any]:
 
     path = BLISS_OPENAPI_PATH
     if not path:
+        log.warning("BLISS_OPENAPI_PATH is not configured; /openapi_bliss.json is unavailable")
         raise FileNotFoundError("BlissOS OpenAPI specification is not configured.")
 
-    with open(path, "r", encoding="utf-8") as handle:
+    spec_path = Path(path)
+    log.debug("Loading BlissOS OpenAPI specification from %s", spec_path)
+
+    if not spec_path.is_file():
+        log.error("BlissOS OpenAPI specification not found at %s", spec_path)
+        raise FileNotFoundError(f"BlissOS OpenAPI specification not found at '{spec_path}'.")
+
+    with spec_path.open("r", encoding="utf-8") as handle:
         try:
             return json.load(handle)
         except json.JSONDecodeError as exc:  # pragma: no cover - defensive guard
+            log.exception("Invalid JSON in BlissOS OpenAPI specification at %s", spec_path)
             raise ValueError(
-                f"Invalid JSON in BlissOS OpenAPI specification at '{path}': {exc}"
+                f"Invalid JSON in BlissOS OpenAPI specification at '{spec_path}': {exc}"
             ) from exc
 
 
@@ -96,6 +107,85 @@ def bliss_openapi_spec() -> Dict[str, Any]:
         ) from exc
     except ValueError as exc:  # pragma: no cover - defensive guard
         raise _http_500(str(exc)) from exc
+
+
+class BlissOpenAPIStatus(BaseModel):
+    """Diagnostic information for the optional BlissOS OpenAPI spec."""
+
+    configured: bool = Field(
+        description="Whether BLISS_OPENAPI_PATH is configured in the environment.",
+    )
+    path: Optional[str] = Field(
+        default=None,
+        description="Absolute path to the OpenAPI document if configured.",
+    )
+    exists: bool = Field(description="Whether the configured file exists on disk.")
+    size_bytes: Optional[int] = Field(
+        default=None,
+        description="Size of the OpenAPI document in bytes, if available.",
+        ge=0,
+    )
+    mtime_iso: Optional[str] = Field(
+        default=None,
+        description="Last modification timestamp in ISO 8601 format (UTC).",
+    )
+    loadable: bool = Field(
+        description="True if the JSON file can be parsed successfully.",
+    )
+    error: Optional[str] = Field(
+        default=None,
+        description="Error message describing why the spec is unavailable.",
+    )
+
+
+@app.get("/openapi_bliss/status", response_model=BlissOpenAPIStatus)
+def bliss_openapi_status() -> BlissOpenAPIStatus:
+    """Provide diagnostics for the BlissOS OpenAPI configuration."""
+
+    path = BLISS_OPENAPI_PATH
+    configured = bool(path)
+
+    if not configured:
+        return BlissOpenAPIStatus(
+            configured=False,
+            path=None,
+            exists=False,
+            loadable=False,
+            error="BLISS_OPENAPI_PATH is not set.",
+        )
+
+    spec_path = Path(path)
+    exists = spec_path.is_file()
+    size_bytes: Optional[int] = None
+    mtime_iso: Optional[str] = None
+
+    if exists:
+        stat = spec_path.stat()
+        size_bytes = stat.st_size
+        mtime_iso = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat()
+
+    error: Optional[str] = None
+    loadable = False
+
+    if exists:
+        try:
+            with spec_path.open("r", encoding="utf-8") as handle:
+                json.load(handle)
+            loadable = True
+        except Exception as exc:  # pragma: no cover - defensive guard
+            error = f"{exc.__class__.__name__}: {exc}"
+    else:
+        error = f"File not found at '{spec_path}'"
+
+    return BlissOpenAPIStatus(
+        configured=True,
+        path=str(spec_path),
+        exists=exists,
+        size_bytes=size_bytes,
+        mtime_iso=mtime_iso,
+        loadable=loadable,
+        error=error,
+    )
 
 # ─────────────────────────────────────────────
 # Моделі запитів
