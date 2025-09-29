@@ -18,6 +18,19 @@ def _fresh_app(monkeypatch: pytest.MonkeyPatch):
     return importlib.reload(app)
 
 
+def test_repo_root_candidate_is_detected(monkeypatch: pytest.MonkeyPatch):
+    app = _fresh_app(monkeypatch)
+
+    expected = Path(app.__file__).resolve().parent.parent / "openapi_bliss.json"
+    assert expected in app._BLISS_OPENAPI_CANDIDATES
+
+    if expected.exists():
+        assert app.BLISS_OPENAPI_PATH == str(expected)
+        assert app.BLISS_OPENAPI_AUTO is True
+    else:  # pragma: no cover - repository missing optional file
+        pytest.skip("Repository root openapi_bliss.json is not present")
+
+
 def test_auto_discovers_openapi_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     app = _fresh_app(monkeypatch)
 
