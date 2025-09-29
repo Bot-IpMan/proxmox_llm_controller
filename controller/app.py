@@ -52,6 +52,7 @@ BLISS_OPENAPI_ENV = os.getenv("BLISS_OPENAPI_PATH")
 _BLISS_OPENAPI_CANDIDATES: Tuple[Path, ...] = (
     Path("/app/openapi_bliss.json"),
     Path(__file__).resolve().parent / "openapi_bliss.json",
+    Path(__file__).resolve().parent.parent / "openapi_bliss.json",
 )
 
 
