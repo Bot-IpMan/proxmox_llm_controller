@@ -493,6 +493,46 @@
                     ]
                   }
                 },
+                "launchActivity": {
+                  "summary": "Запуск активності через am start",
+                  "value": {
+                    "serial": "192.168.1.220:5555",
+                    "args": [
+                      "shell",
+                      "am",
+                      "start",
+                      "-n",
+                      "com.facebook.katana/.MainTabActivity"
+                    ]
+                  }
+                },
+                "monkey": {
+                  "summary": "Запуск іконки через monkey",
+                  "value": {
+                    "serial": "192.168.1.220:5555",
+                    "args": [
+                      "shell",
+                      "monkey",
+                      "-p",
+                      "com.facebook.katana",
+                      "-c",
+                      "android.intent.category.LAUNCHER",
+                      "1"
+                    ]
+                  }
+                },
+                "forceStop": {
+                  "summary": "Зупинка застосунку",
+                  "value": {
+                    "serial": "192.168.1.220:5555",
+                    "args": [
+                      "shell",
+                      "am",
+                      "force-stop",
+                      "com.facebook.katana"
+                    ]
+                  }
+                },
                 "command": {
                   "summary": "Формат рядка",
                   "value": {
