@@ -1335,7 +1335,7 @@ def deploy(spec: DeploySpec) -> Dict[str, Any]:
     safe_ctx = {k: shlex.quote(v) for k, v in ctx.items()}
 
     def render(c: str) -> str:
-        tmpl_str = re.sub(r"\{\{(\w+)\}\}", r"${\1}", c)
+        tmpl_str = re.sub(r"\{\{\s*(\w+)\s*\}\}", r"${\1}", c)
         template = Template(tmpl_str)
         return template.safe_substitute(safe_ctx)
 
