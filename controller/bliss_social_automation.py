@@ -362,6 +362,41 @@ class BlissSocialAutomation:
             remote_uris.append(f"file://{destination}")
         return remote_uris
 
+    def push_assets(
+        self,
+        files: Sequence[Path],
+        remote_directory: str = "/sdcard/Download",
+    ) -> Dict[str, str]:
+        """Push local files to the BlissOS device and return their destinations.
+
+        The helper mirrors the behaviour of ``adb push`` but adds a few quality
+        of life features required by social media automation scripts.  Each
+        source path is resolved, validated and copied into ``remote_directory``
+        while preserving the original filename.  The resulting dictionary maps
+        the absolute local path to the computed remote location so the caller
+        can later reference the uploaded assets when constructing share intents
+        or other automation actions.
+        """
+
+        self.ensure_device()
+
+        base_directory = remote_directory.rstrip("/") or "/"
+        uploaded: Dict[str, str] = {}
+        for item in files:
+            path = Path(item)
+            if not path.exists():
+                raise FileNotFoundError(path)
+
+            if base_directory == "/":
+                destination = f"/{path.name}"
+            else:
+                destination = f"{base_directory}/{path.name}"
+
+            self.adb.push(path, destination)
+            uploaded[str(path.resolve())] = destination
+
+        return uploaded
+
     def _build_share_command(self, intent: ShareIntent, remote_uris: Sequence[str]) -> List[str]:
         mime = intent.determine_mime()
         action = intent.app.share_action
@@ -559,6 +594,17 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Additional extras to include in the intent",
     )
 
+    push_parser = subparsers.add_parser(
+        "push",
+        help="Copy local files into BlissOS storage",
+    )
+    push_parser.add_argument("files", nargs="+", type=Path, help="Local files to upload")
+    push_parser.add_argument(
+        "--remote-dir",
+        default="/sdcard/Download",
+        help="Directory on the device where files will be stored",
+    )
+
     batch_share_parser = subparsers.add_parser(
         "batch-share",
         help="Execute multiple share actions defined in a JSON plan",
@@ -673,6 +719,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 extras=extras,
             )
             print(output)
+            return 0
+
+        if options.command == "push":
+            uploads = automation.push_assets(options.files, remote_directory=options.remote_dir)
+            print(json.dumps(uploads, indent=2))
             return 0
 
         if options.command == "batch-share":

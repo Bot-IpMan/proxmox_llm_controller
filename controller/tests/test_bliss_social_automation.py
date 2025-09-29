@@ -72,6 +72,16 @@ def test_publish_batch_stop_on_error(tmp_path, automation):
         automation.publish_batch(plans, stop_on_error=True)
 
 
+def test_push_assets_transfers_files_and_returns_remote_paths(tmp_path, automation):
+    file_path = tmp_path / "caption.txt"
+    file_path.write_text("hello world", encoding="utf-8")
+
+    uploads = automation.push_assets([file_path], remote_directory="/sdcard/Target")
+
+    assert automation.adb.push_calls == [(file_path, "/sdcard/Target/caption.txt")]
+    assert uploads[str(file_path.resolve())] == "/sdcard/Target/caption.txt"
+
+
 def test_load_batch_plan_accepts_list(tmp_path):
     plan = [{"app": "twitter"}]
     path = tmp_path / "plan.json"
