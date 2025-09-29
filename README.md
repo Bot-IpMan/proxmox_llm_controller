@@ -124,6 +124,59 @@ BlissOS дає змогу інсталювати Android‑додатки чер
 
 Ці методи працюють і для інших популярних клієнтів соцмереж (Instagram `com.instagram.android`, TikTok `com.zhiliaoapp.musically`, Twitter `com.twitter.android`, Reddit `com.reddit.frontpage`, LinkedIn `com.linkedin.android`, Threads `com.instagram.barcelona` тощо). За потреби поєднуйте їх з REST-ендпоінтом `/bliss/adb/command`, передаючи необхідні аргументи (`{"args": ["shell", "am", "start", "-n", "<package>/<activity>"]}`), щоб запускати інтерфейс безпосередньо з OpenWebUI.
 
+### Передача контенту та публікація в BlissOS
+
+Коли потрібно завантажити підготовлений контент (текст, фото, відео) у BlissOS і одразу передати його в конкретний застосунок, скористайтесь двоетапним сценарієм:
+
+1. **Передача файлів на пристрій через `adb push`.**
+
+   ```sh
+   adb push localfile.jpg /sdcard/Download/localfile.jpg
+   adb push message.txt /sdcard/Download/message.txt
+   ```
+
+   Обидві команди копіюють вихідні файли в каталог `/sdcard/Download` на стороні BlissOS. За потреби замініть імена файлів/каталог на власні.
+
+2. **Виклик інтенту `android.intent.action.SEND`, щоб відкрити екран публікації.**
+
+   Для текстових повідомлень:
+
+   ```sh
+   adb shell am start -a android.intent.action.SEND \
+     -t text/plain \
+     -e android.intent.extra.TEXT "Привіт, світ!" \
+     -n com.twitter.android/com.twitter.android.PostActivity
+   ```
+
+   Для зображень (можна додати підпис):
+
+   ```sh
+   adb shell am start -a android.intent.action.SEND \
+     -t image/jpeg \
+     -e android.intent.extra.TEXT "Опис зображення" \
+     -e android.intent.extra.STREAM /sdcard/Download/photo.jpg \
+     -n com.instagram.android/com.instagram.share.handleractivity.ShareHandlerActivity
+   ```
+
+   * `-a` визначає дію (у прикладі – SEND).
+   * `-t` — MIME-тип даних (`text/plain`, `image/*`, `video/*` тощо).
+   * `-e android.intent.extra.TEXT` — рядок із підписом/текстом.
+   * `-e android.intent.extra.STREAM` — шлях до файлу, якщо передається медіа.
+   * `-n` — повне ім'я компонента (`package/activity`) цільового застосунку.
+
+   Назви активностей можуть відрізнятися у різних версіях застосунків; за потреби з'ясуйте актуальні значення через `adb shell dumpsys package <package>` або сторонні довідники.
+
+3. **Завершення публікації.** Якщо після запуску інтенту потрібно підтвердити публікацію, скористайтесь емуляцією натискань або введенням тексту:
+
+   ```sh
+   adb shell input tap X Y
+   adb shell input text "Ваш%20текст%20тут"
+   ```
+
+   Знайдіть координати кнопки у режимі `Pointer Location` в налаштуваннях розробника BlissOS. Пробіли в команді `input text` замініть на `%20` або використовуйте передачу тексту через `android.intent.extra.TEXT`.
+
+Ця ж схема працює для будь-яких соціальних мереж (Facebook, TikTok, Threads тощо): достатньо вказати правильний пакет/активність та MIME-тип. Якщо потрібно автоматизувати сценарій, обгорніть команди у виклик REST-ендпоінтів контролера (`/bliss/adb/command`) із відповідними аргументами.
+
 ### Підключення кількох OpenAPI-інструментів в OpenWebUI
 
 OpenWebUI дозволяє одночасно реєструвати кілька інструментів, кожен з яких працює на власному OpenAPI-сервері. Щоб додати їх:
