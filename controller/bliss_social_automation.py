@@ -31,6 +31,8 @@ __all__ = [
     "ADBCommandError",
     "SocialAppConfig",
     "ADBClient",
+    "ContentGenerator",
+    "ContentGeneratorError",
     "BlissSocialAutomation",
     "SOCIAL_APPS",
     "build_arg_parser",
@@ -132,6 +134,157 @@ SOCIAL_APPS: Dict[str, SocialAppConfig] = {
         default_mime_type="text/plain",
     ),
 }
+
+
+class ContentGeneratorError(RuntimeError):
+    """Raised when LLM based content generation fails."""
+
+
+def _read_env_float(name: str) -> Optional[float]:
+    value = os.getenv(name)
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except ValueError as exc:  # pragma: no cover - misconfigured environment
+        raise ContentGeneratorError(f"Environment variable {name} must be a float") from exc
+
+
+def _read_env_int(name: str) -> Optional[int]:
+    value = os.getenv(name)
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except ValueError as exc:  # pragma: no cover - misconfigured environment
+        raise ContentGeneratorError(f"Environment variable {name} must be an integer") from exc
+
+
+@dataclass
+class ContentGenerator:
+    """Utility wrapper around OpenAI or Hugging Face text generation."""
+
+    provider: Optional[str] = None
+    model: Optional[str] = None
+    temperature: Optional[float] = None
+    max_tokens: Optional[int] = None
+    openai_api_key: Optional[str] = None
+    huggingface_model: Optional[str] = None
+    device: Optional[str] = None
+    extra_options: Mapping[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        provider_env = os.getenv("BLISS_LLM_PROVIDER")
+        provider = (self.provider or provider_env or "openai").lower()
+        if provider not in {"openai", "huggingface"}:
+            raise ContentGeneratorError(
+                f"Unsupported LLM provider '{provider}'. Expected 'openai' or 'huggingface'."
+            )
+        self.provider = provider
+
+        if self.temperature is None:
+            self.temperature = _read_env_float("BLISS_LLM_TEMPERATURE")
+        if self.max_tokens is None:
+            self.max_tokens = _read_env_int("BLISS_LLM_MAX_TOKENS")
+
+        if provider == "openai":
+            self._initialise_openai()
+        else:
+            self._initialise_huggingface()
+
+    # ──────────────────────────────────────────────────────────────────
+    # Provider initialisation helpers
+    # ──────────────────────────────────────────────────────────────────
+
+    def _initialise_openai(self) -> None:
+        try:
+            import openai  # type: ignore[import-not-found]
+        except ImportError as exc:
+            raise ContentGeneratorError(
+                "OpenAI python package is required for provider 'openai'."
+            ) from exc
+
+        api_key = self.openai_api_key or os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ContentGeneratorError("OpenAI API key not provided. Set OPENAI_API_KEY environment variable.")
+
+        model = self.model or os.getenv("BLISS_OPENAI_MODEL") or "gpt-3.5-turbo"
+        self.model = model
+        self._openai = openai
+        self._openai.api_key = api_key
+
+    def _initialise_huggingface(self) -> None:
+        try:
+            from transformers import pipeline  # type: ignore[import-not-found]
+        except ImportError as exc:
+            raise ContentGeneratorError(
+                "transformers package is required for provider 'huggingface'."
+            ) from exc
+
+        model = self.model or self.huggingface_model or os.getenv("BLISS_HF_MODEL") or "gpt2"
+        self.model = model
+        pipeline_kwargs: Dict[str, Any] = {}
+        device = self.device or os.getenv("BLISS_HF_DEVICE")
+        if device:
+            pipeline_kwargs["device"] = device
+        self._hf_pipeline = pipeline("text-generation", model=model, **pipeline_kwargs)
+
+    # ──────────────────────────────────────────────────────────────────
+    # Public API
+    # ──────────────────────────────────────────────────────────────────
+
+    def generate(self, prompt: str, *, system_prompt: Optional[str] = None) -> str:
+        if self.provider == "openai":
+            return self._generate_openai(prompt, system_prompt=system_prompt)
+        return self._generate_huggingface(prompt, system_prompt=system_prompt)
+
+    def _generate_openai(self, prompt: str, *, system_prompt: Optional[str]) -> str:
+        messages: List[Dict[str, str]] = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        params: Dict[str, Any] = {
+            "model": self.model,
+            "messages": messages,
+        }
+        if self.temperature is not None:
+            params["temperature"] = self.temperature
+        if self.max_tokens is not None:
+            params["max_tokens"] = self.max_tokens
+        params.update(dict(self.extra_options))
+
+        response = self._openai.ChatCompletion.create(**params)
+        try:
+            content = response["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise ContentGeneratorError("Unexpected response structure from OpenAI ChatCompletion") from exc
+        if not isinstance(content, str):
+            raise ContentGeneratorError("OpenAI returned non-string message content")
+        return content.strip()
+
+    def _generate_huggingface(self, prompt: str, *, system_prompt: Optional[str]) -> str:
+        combined_prompt = prompt
+        if system_prompt:
+            combined_prompt = f"{system_prompt.strip()}\n{prompt}"
+
+        generation_kwargs: Dict[str, Any] = dict(self.extra_options)
+        if self.temperature is not None:
+            generation_kwargs.setdefault("temperature", self.temperature)
+        if self.max_tokens is not None:
+            generation_kwargs.setdefault("max_new_tokens", self.max_tokens)
+
+        outputs = self._hf_pipeline(combined_prompt, **generation_kwargs)
+        if not outputs:
+            raise ContentGeneratorError("Hugging Face pipeline did not return any output")
+
+        first = outputs[0]
+        if isinstance(first, Mapping):
+            for key in ("generated_text", "summary_text", "text"):
+                value = first.get(key)
+                if isinstance(value, str):
+                    return value.strip()
+        raise ContentGeneratorError("Unsupported output format from Hugging Face pipeline")
 
 
 class ADBClient:
@@ -427,6 +580,25 @@ class BlissSocialAutomation:
         result = self.adb.run(command, timeout=120)
         return result.stdout.strip()
 
+    def generate_post_text(
+        self,
+        prompt: str,
+        *,
+        generator: Optional[ContentGenerator] = None,
+        generator_options: Optional[Mapping[str, Any]] = None,
+        system_prompt: Optional[str] = None,
+    ) -> str:
+        """Generate social media copy using the configured LLM provider."""
+
+        if generator is not None and generator_options is not None:
+            raise ValueError("Specify either an existing generator or generator_options, not both")
+
+        if generator is None:
+            options_dict = dict(generator_options or {})
+            generator = ContentGenerator(**options_dict)
+
+        return generator.generate(prompt, system_prompt=system_prompt)
+
     def input_text(self, value: str) -> str:
         self.ensure_device()
         encoded = _encode_input_text(value)
@@ -456,6 +628,10 @@ class BlissSocialAutomation:
         app_name: str,
         *,
         text: Optional[str] = None,
+        generation_prompt: Optional[str] = None,
+        system_prompt: Optional[str] = None,
+        generator: Optional[ContentGenerator] = None,
+        generator_options: Optional[Mapping[str, Any]] = None,
         subject: Optional[str] = None,
         media: Sequence[Path] = (),
         remote_directory: str = "/sdcard/Download",
@@ -467,9 +643,18 @@ class BlissSocialAutomation:
         except KeyError as exc:
             raise KeyError(f"Unknown social app '{app_name}'. Available: {', '.join(SOCIAL_APPS)}") from exc
 
+        resolved_text = text
+        if generation_prompt and resolved_text is None:
+            resolved_text = self.generate_post_text(
+                generation_prompt,
+                generator=generator,
+                generator_options=generator_options,
+                system_prompt=system_prompt,
+            )
+
         intent = ShareIntent(
             app=app,
-            text=text,
+            text=resolved_text,
             subject=subject,
             media_files=list(media),
             remote_directory=remote_directory,
@@ -593,6 +778,39 @@ def build_arg_parser() -> argparse.ArgumentParser:
         metavar="KEY=VALUE",
         help="Additional extras to include in the intent",
     )
+    share_parser.add_argument(
+        "--prompt",
+        dest="generation_prompt",
+        help="Prompt used to generate the post text via the configured LLM",
+    )
+    share_parser.add_argument(
+        "--system-prompt",
+        dest="system_prompt",
+        help="Optional system prompt for chat-based generators",
+    )
+    share_parser.add_argument(
+        "--llm-provider",
+        choices=["openai", "huggingface"],
+        dest="llm_provider",
+        help="Override the LLM provider when generating text",
+    )
+    share_parser.add_argument(
+        "--llm-model",
+        dest="llm_model",
+        help="Model identifier for the selected LLM provider",
+    )
+    share_parser.add_argument(
+        "--llm-temperature",
+        dest="llm_temperature",
+        type=float,
+        help="Sampling temperature to use for the generator",
+    )
+    share_parser.add_argument(
+        "--llm-max-tokens",
+        dest="llm_max_tokens",
+        type=int,
+        help="Maximum number of tokens (or new tokens) to generate",
+    )
 
     push_parser = subparsers.add_parser(
         "push",
@@ -630,6 +848,40 @@ def build_arg_parser() -> argparse.ArgumentParser:
     swipe_parser.add_argument("y2", type=int)
     swipe_parser.add_argument("--duration", type=int, default=300, help="Swipe duration in milliseconds")
 
+    generate_parser = subparsers.add_parser(
+        "generate",
+        help="Generate social media post text using the configured LLM",
+    )
+    generate_parser.add_argument("prompt", help="Prompt to feed into the generator")
+    generate_parser.add_argument(
+        "--system-prompt",
+        dest="system_prompt",
+        help="Optional system prompt for the generator",
+    )
+    generate_parser.add_argument(
+        "--llm-provider",
+        choices=["openai", "huggingface"],
+        dest="llm_provider",
+        help="Override the default LLM provider",
+    )
+    generate_parser.add_argument(
+        "--llm-model",
+        dest="llm_model",
+        help="Model identifier to use for generation",
+    )
+    generate_parser.add_argument(
+        "--llm-temperature",
+        dest="llm_temperature",
+        type=float,
+        help="Sampling temperature for the generator",
+    )
+    generate_parser.add_argument(
+        "--llm-max-tokens",
+        dest="llm_max_tokens",
+        type=int,
+        help="Maximum number of tokens (or new tokens) to produce",
+    )
+
     return parser
 
 
@@ -641,6 +893,23 @@ def _extras_from_pairs(pairs: Iterable[str]) -> Dict[str, str]:
         key, value = item.split("=", 1)
         extras[key] = value
     return extras
+
+
+def _generator_options_from_args(options: Any) -> Dict[str, Any]:
+    config: Dict[str, Any] = {}
+    provider = getattr(options, "llm_provider", None)
+    if provider:
+        config["provider"] = provider
+    model = getattr(options, "llm_model", None)
+    if model:
+        config["model"] = model
+    temperature = getattr(options, "llm_temperature", None)
+    if temperature is not None:
+        config["temperature"] = temperature
+    max_tokens = getattr(options, "llm_max_tokens", None)
+    if max_tokens is not None:
+        config["max_tokens"] = max_tokens
+    return config
 
 
 def _load_batch_plan(path: Path) -> List[MutableMapping[str, Any]]:
@@ -706,12 +975,26 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             print(output)
             return 0
 
+        if options.command == "generate":
+            generator_options = _generator_options_from_args(options)
+            text = automation.generate_post_text(
+                options.prompt,
+                generator_options=generator_options or None,
+                system_prompt=options.system_prompt,
+            )
+            print(text)
+            return 0
+
         if options.command == "share":
             extras = _extras_from_pairs(options.extra)
             media_paths = [Path(p) for p in options.media]
+            generator_options = _generator_options_from_args(options)
             output = automation.publish_post(
                 options.app,
                 text=options.text,
+                generation_prompt=options.generation_prompt,
+                system_prompt=options.system_prompt,
+                generator_options=generator_options or None,
                 subject=options.subject,
                 media=media_paths,
                 remote_directory=options.remote_dir,

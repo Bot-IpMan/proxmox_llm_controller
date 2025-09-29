@@ -1,10 +1,16 @@
 import json
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
-from controller.bliss_social_automation import BlissSocialAutomation, _load_batch_plan
+from controller.bliss_social_automation import (
+    BlissSocialAutomation,
+    ContentGenerator,
+    ContentGeneratorError,
+    _load_batch_plan,
+)
 
 
 class FakeADB:
@@ -106,3 +112,120 @@ def test_load_batch_plan_invalid_structure(tmp_path):
 
     with pytest.raises(ValueError):
         _load_batch_plan(path)
+
+
+def test_content_generator_openai(monkeypatch):
+    calls = {}
+
+    class DummyChatCompletion:
+        @staticmethod
+        def create(**kwargs):
+            calls.update(kwargs)
+            return {"choices": [{"message": {"content": "Generated text  "}}]}
+
+    dummy_module = SimpleNamespace(ChatCompletion=DummyChatCompletion, api_key=None)
+    monkeypatch.setitem(sys.modules, "openai", dummy_module)
+    monkeypatch.setenv("OPENAI_API_KEY", "secret")
+
+    generator = ContentGenerator(provider="openai", model="test-model", temperature=0.5, max_tokens=42)
+    text = generator.generate("Write a post", system_prompt="system message")
+
+    assert text == "Generated text"
+    assert calls["model"] == "test-model"
+    assert calls["messages"][0]["role"] == "system"
+    assert calls["messages"][1]["content"] == "Write a post"
+    assert calls["temperature"] == 0.5
+    assert calls["max_tokens"] == 42
+    assert dummy_module.api_key == "secret"
+
+
+def test_content_generator_huggingface(monkeypatch):
+    captured = {}
+
+    def fake_pipeline(task, model=None, **kwargs):
+        captured["task"] = task
+        captured["model"] = model
+        captured["pipeline_kwargs"] = kwargs
+
+        def runner(prompt, **params):
+            captured["prompt"] = prompt
+            captured["params"] = params
+            return [{"generated_text": "Result"}]
+
+        return runner
+
+    monkeypatch.setitem(sys.modules, "transformers", SimpleNamespace(pipeline=fake_pipeline))
+
+    generator = ContentGenerator(provider="huggingface", model="distilgpt2", temperature=0.8, max_tokens=64)
+    text = generator.generate("Compose", system_prompt="Guidelines")
+
+    assert text == "Result"
+    assert captured["task"] == "text-generation"
+    assert captured["model"] == "distilgpt2"
+    assert captured["prompt"].startswith("Guidelines")
+    assert captured["params"]["temperature"] == 0.8
+    assert captured["params"]["max_new_tokens"] == 64
+
+
+def test_content_generator_missing_key(monkeypatch):
+    monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(ChatCompletion=SimpleNamespace(create=lambda **_: None), api_key=None))
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+    with pytest.raises(ContentGeneratorError):
+        ContentGenerator(provider="openai")
+
+
+def test_publish_post_generates_text(monkeypatch, automation):
+    class DummyGenerator:
+        def __init__(self):
+            self.calls = []
+
+        def generate(self, prompt, system_prompt=None):
+            self.calls.append((prompt, system_prompt))
+            return "Generated"
+
+    dummy = DummyGenerator()
+
+    automation.publish_post(
+        "facebook",
+        generation_prompt="Write something",
+        system_prompt="Rules",
+        generator=dummy,
+    )
+
+    assert dummy.calls == [("Write something", "Rules")]
+    assert any("Generated" in arg for arg in automation.adb.run_calls[0][0])
+
+
+def test_generate_post_text_uses_options(monkeypatch):
+    created = {}
+
+    class DummyGenerator:
+        def __init__(self, **kwargs):
+            created.update(kwargs)
+
+        def generate(self, prompt, system_prompt=None):
+            return f"text:{prompt}:{system_prompt}"
+
+    monkeypatch.setattr("controller.bliss_social_automation.ContentGenerator", DummyGenerator)
+
+    automation = BlissSocialAutomation(adb=FakeADB())
+    text = automation.generate_post_text(
+        "Prompt",
+        generator_options={"provider": "huggingface", "temperature": 0.3},
+        system_prompt="System",
+    )
+
+    assert text == "text:Prompt:System"
+    assert created == {"provider": "huggingface", "temperature": 0.3}
+
+
+def test_generate_post_text_conflict(automation):
+    generator = SimpleNamespace(generate=lambda *_args, **_kwargs: "text")
+
+    with pytest.raises(ValueError):
+        automation.generate_post_text(
+            "Prompt",
+            generator=generator,
+            generator_options={"provider": "openai"},
+        )
