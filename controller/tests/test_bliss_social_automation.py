@@ -123,6 +123,7 @@ def test_other_networks_keep_text_extra(tmp_path, automation):
     command, _timeout = automation.adb.run_calls[-1]
     extras = " ".join(_extract_am_extras(command))
     assert "android.intent.extra.TEXT" in extras
+    assert "--grant-read-uri-permission" in command
 
 
 def test_load_batch_plan_accepts_list(tmp_path):
