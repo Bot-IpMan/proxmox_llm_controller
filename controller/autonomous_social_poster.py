@@ -154,6 +154,8 @@ class AutonomousSocialPoster:
         system_prompt: Optional[str] = None,
         generator: Optional[ContentGenerator] = None,
         generator_options: Optional[Mapping[str, Any]] = None,
+        launch_before_share: bool = False,
+        launch_activity: Optional[str] = None,
     ) -> str:
         profile = self.get_network(network)
         target_dir = remote_directory or profile.remote_directory
@@ -170,6 +172,8 @@ class AutonomousSocialPoster:
             system_prompt=system_prompt,
             generator=generator,
             generator_options=generator_options,
+            launch_before_share=launch_before_share,
+            launch_activity=launch_activity,
         )
 
     def run_plan(self, plan: Sequence[Mapping[str, Any]], *, stop_on_error: bool = False) -> Sequence[Dict[str, Any]]:
@@ -253,6 +257,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
     post_parser.add_argument("--media", nargs="*", type=Path, default=[], help="Media files to attach")
     post_parser.add_argument("--remote-dir", help="Remote directory for media uploads")
     post_parser.add_argument("--share-activity", help="Override share activity component")
+    post_parser.add_argument(
+        "--launch-before-share",
+        action="store_true",
+        help="Launch the app with 'adb shell am start' before sharing",
+    )
+    post_parser.add_argument(
+        "--launch-activity",
+        help="Explicit activity/component to start ahead of the share intent",
+    )
     post_parser.add_argument("--extra", action="append", default=[], metavar="KEY=VALUE", help="Additional intent extras")
     post_parser.add_argument("--prompt", dest="generation_prompt", help="LLM prompt for auto-generated text")
     post_parser.add_argument("--system-prompt", dest="system_prompt", help="Optional system prompt for LLM")
@@ -355,6 +368,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 generation_prompt=options.generation_prompt,
                 system_prompt=options.system_prompt,
                 generator_options=generator_options or None,
+                launch_before_share=options.launch_before_share,
+                launch_activity=options.launch_activity,
             )
             print(result)
             return 0

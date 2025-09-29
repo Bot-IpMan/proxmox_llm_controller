@@ -23,6 +23,8 @@ class FakeADB:
         self.push_calls = []
         self.run_calls = []
         self.mkdir_calls = []
+        self.launch_calls = []
+        self.monkey_calls = []
 
     def push(self, source: Path, destination: str) -> str:
         self.push_calls.append((Path(source), destination))
@@ -38,6 +40,14 @@ class FakeADB:
     def ensure_device_ready(self):
         return {"serial": self.serial or "FAKE", "status": "device"}
 
+    def launch_activity(self, component: str, *, extras: Sequence[str] = ()):  # type: ignore[override]
+        self.launch_calls.append((component, list(extras)))
+        return "Activity launched"
+
+    def launch_via_monkey(self, package: str) -> str:
+        self.monkey_calls.append(package)
+        return "Monkey launched"
+
 
 @pytest.fixture()
 def automation():
@@ -49,7 +59,12 @@ def test_publish_batch_executes_posts_and_collects_results(tmp_path, automation)
     media_file.write_bytes(b"binary")
 
     plans = [
-        {"app": "twitter", "text": "Hello", "media": [str(media_file)]},
+        {
+            "app": "twitter",
+            "text": "Hello",
+            "media": [str(media_file)],
+            "launch_before_share": True,
+        },
         {"app": "facebook", "text": "World"},
     ]
 
@@ -63,6 +78,7 @@ def test_publish_batch_executes_posts_and_collects_results(tmp_path, automation)
     assert len(automation.adb.run_calls) == 2
     assert "com.twitter.android" in " ".join(automation.adb.run_calls[0][0])
     assert "com.facebook.katana" in " ".join(automation.adb.run_calls[1][0])
+    assert automation.adb.launch_calls[0][0] == "com.twitter.android/com.twitter.app.main.MainActivity"
 
 
 def test_publish_batch_collects_errors(tmp_path, automation):
@@ -132,6 +148,27 @@ def test_other_networks_keep_text_extra(tmp_path, automation):
     extras = " ".join(_extract_am_extras(command))
     assert "android.intent.extra.TEXT" in extras
     assert "--grant-read-uri-permission" in command
+
+
+def test_publish_post_launches_activity_when_requested(automation):
+    automation.publish_post("facebook", text="hello", launch_before_share=True)
+
+    assert automation.adb.launch_calls, "Expected launch_activity to be invoked"
+    component, extras = automation.adb.launch_calls[-1]
+    assert component == "com.facebook.katana/com.facebook.katana.IntentUriHandler"
+    assert extras == []
+
+
+def test_publish_post_custom_launch_activity(automation):
+    automation.publish_post(
+        "facebook",
+        text="hello",
+        launch_before_share=True,
+        launch_activity="com.facebook.katana/.ComposerActivity",
+    )
+
+    component, _extras = automation.adb.launch_calls[-1]
+    assert component == "com.facebook.katana/.ComposerActivity"
 
 
 def test_load_batch_plan_accepts_list(tmp_path):

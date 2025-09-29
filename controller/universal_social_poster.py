@@ -144,6 +144,8 @@ def post_content(
     extras: Optional[MutableMapping[str, str]] = None,
     remote_directory: Optional[str] = None,
     share_activity: Optional[str] = None,
+    launch_before_share: bool = False,
+    launch_activity: Optional[str] = None,
     automation: Optional[BlissSocialAutomation] = None,
     adb_client: Optional[ADBClient] = None,
 ) -> str:
@@ -166,6 +168,8 @@ def post_content(
         remote_directory=target_directory,
         share_activity=share_activity,
         extras=extras,
+        launch_before_share=launch_before_share,
+        launch_activity=launch_activity,
     )
 
 

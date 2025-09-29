@@ -1030,6 +1030,8 @@ class BlissSocialAutomation:
         remote_directory: str = "/sdcard/Download",
         share_activity: Optional[str] = None,
         extras: Optional[MutableMapping[str, str]] = None,
+        launch_before_share: bool = False,
+        launch_activity: Optional[str] = None,
     ) -> str:
         try:
             app = SOCIAL_APPS[app_name.lower()]
@@ -1045,6 +1047,15 @@ class BlissSocialAutomation:
                 generator_options=generator_options,
                 system_prompt=system_prompt,
             )
+
+        if launch_before_share:
+            activity_target = launch_activity or app.launch_activity or share_activity
+            logger.info(
+                "Pre-launching %s before share intent (activity=%s)",
+                app.package,
+                activity_target or "launcher",
+            )
+            self.launch_app(app, activity=activity_target)
 
         intent = ShareIntent(
             app=app,
@@ -1075,6 +1086,11 @@ class BlissSocialAutomation:
             subject = plan.get("subject")
             remote_dir = str(plan.get("remote_directory", "/sdcard/Download"))
             share_activity = plan.get("share_activity")
+            launch_before_share = bool(plan.get("launch_before_share", False))
+            launch_activity_value = plan.get("launch_activity")
+            launch_activity = (
+                str(launch_activity_value) if launch_activity_value is not None else None
+            )
 
             extras_obj = plan.get("extras") or {}
             if not isinstance(extras_obj, Mapping):
@@ -1104,6 +1120,8 @@ class BlissSocialAutomation:
                     remote_directory=remote_dir,
                     share_activity=share_activity if isinstance(share_activity, str) else None,
                     extras=extras,
+                    launch_before_share=launch_before_share,
+                    launch_activity=launch_activity,
                 )
                 results.append({"app": app_name, "status": "ok", "output": output})
             except Exception as exc:  # pragma: no cover - error path validated separately
@@ -1179,6 +1197,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Directory on the device where media files will be pushed",
     )
     share_parser.add_argument("--share-activity", help="Override the share activity component")
+    share_parser.add_argument(
+        "--launch-before-share",
+        action="store_true",
+        help="Launch the target app via 'adb shell am start' before sending the share intent",
+    )
+    share_parser.add_argument(
+        "--launch-activity",
+        help="Specific activity/component to start prior to sharing",
+    )
     share_parser.add_argument(
         "--extra",
         action="append",
@@ -1420,6 +1447,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 remote_directory=options.remote_dir,
                 share_activity=options.share_activity,
                 extras=extras,
+                launch_before_share=options.launch_before_share,
+                launch_activity=options.launch_activity,
             )
             print(output)
             return 0

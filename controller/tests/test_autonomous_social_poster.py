@@ -144,6 +144,22 @@ def test_post_content_handles_media_and_generation(poster, tmp_path):
     assert kwargs["media"] == [photo]
     assert kwargs["extras"] == {"foo": "bar"}
     assert kwargs["share_activity"] == "CustomShare"
+    assert kwargs["launch_before_share"] is False
+    assert kwargs["launch_activity"] is None
+
+
+def test_post_content_requests_prelaunch(poster):
+    result = poster.post_content(
+        "instagram",
+        text="Hello",
+        launch_before_share=True,
+        launch_activity="com.instagram.android/.MainTabActivity",
+    )
+
+    assert result == "posted to instagram"
+    _, kwargs = poster.automation.publish_calls[-1]
+    assert kwargs["launch_before_share"] is True
+    assert kwargs["launch_activity"] == "com.instagram.android/.MainTabActivity"
 
 
 def test_run_plan_validates_networks(poster):
