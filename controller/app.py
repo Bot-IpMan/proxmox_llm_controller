@@ -19,9 +19,18 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from proxmoxer import ProxmoxAPI
 import paramiko
 
-if __package__ in {None, "", __name__}:
+# NOTE:
+# ``uvicorn`` loads this module via ``app:app`` which can set ``__package__``
+# to a non-empty value even though the code is copied into ``/app`` in the
+# container image.  When that happens a relative import such as
+# ``from .agent_profile`` fails because ``app`` is not an actual package.  To
+# keep things working regardless of how the module is executed (as a script,
+# as ``uvicorn app:app`` or via ``python -m``) we prefer the absolute import and
+# fall back to the relative variant when running the project from a checked out
+# package.
+try:  # pragma: no cover - exercised in production via Docker image
     from agent_profile import get_agent_profile
-else:  # pragma: no cover - executed under package-relative imports
+except ImportError:  # pragma: no cover - used when running from source package
     from .agent_profile import get_agent_profile
 
 # ─────────────────────────────────────────────
