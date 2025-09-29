@@ -64,6 +64,7 @@ class SocialAppConfig:
     share_action: str = "android.intent.action.SEND"
     supports_multiple: bool = True
     extra_flags: Tuple[str, ...] = ()
+    allow_text_extra: bool = True
 
     def component(self, activity: Optional[str]) -> Optional[str]:
         """Return ``package/activity`` if an activity is provided."""
@@ -100,6 +101,7 @@ SOCIAL_APPS: Dict[str, SocialAppConfig] = {
         launch_activity="com.instagram.mainactivity.MainActivity",
         share_activity="com.instagram.share.handleractivity.ShareHandlerActivity",
         default_mime_type="image/*",
+        allow_text_extra=False,
     ),
     "tiktok": SocialAppConfig(
         package="com.zhiliaoapp.musically",
@@ -403,7 +405,7 @@ class BlissSocialAutomation:
         extras: List[str] = []
         if intent.subject:
             extras.extend(["-e", "android.intent.extra.SUBJECT", intent.subject])
-        if intent.text:
+        if intent.text and intent.app.allow_text_extra:
             extras.extend(["-e", "android.intent.extra.TEXT", intent.text])
         for key, value in intent.extras.items():
             extras.extend(["-e", key, value])
