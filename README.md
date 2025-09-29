@@ -114,6 +114,16 @@ BlissOS дає змогу інсталювати Android‑додатки чер
 
 Для описаних операцій root‑права не потрібні. Системні ж застосунки, інтегровані в образ BlissOS, таким способом не видаляються — для них знадобляться root‑доступ або модифіковане системне середовище.
 
+### Автоматичний запуск додатків BlissOS
+
+Після інсталяції APK можна керувати запуском застосунків дистанційно через ADB. Основні підходи такі:
+
+* **Прямий виклик Activity Manager.** Команда `adb shell am start -n <package>/<activity>` відкриває конкретну активність. Наприклад, щоб запустити головний екран Facebook, виконайте `adb shell am start -n com.facebook.katana/.MainTabActivity`. Для інших програм потрібно уточнити імʼя пакета (`package_name`) та активності (`activity_name`).
+* **Емуляція натискання на іконку через Monkey.** Якщо точну активність встановити складно, скористайтеся інструментом `monkey`: `adb shell monkey -p com.facebook.katana -c android.intent.category.LAUNCHER 1`. Він викликає launch intent пакета й відкриває стандартну стартову активність.
+* **Завершення роботи застосунку.** Для зупинки активного процесу використайте `adb shell am force-stop com.facebook.katana`.
+
+Ці методи працюють і для інших популярних клієнтів соцмереж (Instagram `com.instagram.android`, TikTok `com.zhiliaoapp.musically`, Twitter `com.twitter.android`, Reddit `com.reddit.frontpage`, LinkedIn `com.linkedin.android`, Threads `com.instagram.barcelona` тощо). За потреби поєднуйте їх з REST-ендпоінтом `/bliss/adb/command`, передаючи необхідні аргументи (`{"args": ["shell", "am", "start", "-n", "<package>/<activity>"]}`), щоб запускати інтерфейс безпосередньо з OpenWebUI.
+
 ### Підключення кількох OpenAPI-інструментів в OpenWebUI
 
 OpenWebUI дозволяє одночасно реєструвати кілька інструментів, кожен з яких працює на власному OpenAPI-сервері. Щоб додати їх:
