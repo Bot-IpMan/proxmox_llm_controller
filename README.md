@@ -154,6 +154,8 @@ OpenWebUI підтримує два режими підключення інст
 
 Завантажте власний JSON із подібною структурою та переконайтесь, що OpenWebUI отримує файл без помилок (наприклад, відкривши URL у браузері або через `curl`).
 
+> ℹ️ Додаткові пояснення щодо підключення кількох OpenAPI-серверів і вимог до файлів специфікації дивіться у [FAQ OpenWebUI](https://docs.openwebui.com/openapi-servers/faq/), [документації з інтеграції](https://docs.openwebui.com/openapi-servers/open-webui/) та довідниках із розробки OpenAPI/плагінів ([Dify Blog](https://dify.ai/blog/chatgpt-plugin), [OpenAPI Specification 3.1](https://swagger.io/specification/)).
+
 ### Організація описів OpenAPI
 
 OpenWebUI гнучко ставиться до структури OpenAPI-документації, тому ви можете обрати найзручніший спосіб організації файлів:
