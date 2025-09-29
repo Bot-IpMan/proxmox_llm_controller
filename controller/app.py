@@ -19,7 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from proxmoxer import ProxmoxAPI
 import paramiko
 
-if __package__ in {None, ""}:
+if __package__ in {None, "", __name__}:
     from agent_profile import get_agent_profile
 else:  # pragma: no cover - executed under package-relative imports
     from .agent_profile import get_agent_profile
