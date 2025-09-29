@@ -73,6 +73,7 @@ class SocialAppConfig:
     extra_flags: Tuple[str, ...] = ()
     allow_text_extra: bool = True
     grant_read_uri_permission: bool = True
+    share_categories: Tuple[str, ...] = ("android.intent.category.DEFAULT",)
 
     def component(self, activity: Optional[str]) -> Optional[str]:
         """Return ``package/activity`` if an activity is provided."""
@@ -957,7 +958,10 @@ class BlissSocialAutomation:
 
         extras.extend(intent.app.extra_flags)
         component = intent.app.share_component(intent.share_activity)
-        command = ["shell", "am", "start", "-a", action, "-t", mime, *permission_flags]
+        command = ["shell", "am", "start", "-a", action]
+        for category in intent.app.share_categories:
+            command.extend(["-c", category])
+        command.extend(["-t", mime, *permission_flags])
         if component:
             command.extend(["-n", component])
         command.extend(extras)

@@ -150,6 +150,17 @@ def test_other_networks_keep_text_extra(tmp_path, automation):
     assert "--grant-read-uri-permission" in command
 
 
+def test_share_command_includes_default_category(tmp_path, automation):
+    media = tmp_path / "asset.jpg"
+    media.write_bytes(b"binary")
+
+    automation.publish_post("facebook", text="hello", media=[media])
+
+    command, _timeout = automation.adb.run_calls[-1]
+    assert "-c" in command
+    assert "android.intent.category.DEFAULT" in command
+
+
 def test_publish_post_launches_activity_when_requested(automation):
     automation.publish_post("facebook", text="hello", launch_before_share=True)
 
