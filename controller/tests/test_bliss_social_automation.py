@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 from types import SimpleNamespace
+from typing import List, Sequence
 
 import pytest
 
@@ -80,6 +81,39 @@ def test_push_assets_transfers_files_and_returns_remote_paths(tmp_path, automati
 
     assert automation.adb.push_calls == [(file_path, "/sdcard/Target/caption.txt")]
     assert uploads[str(file_path.resolve())] == "/sdcard/Target/caption.txt"
+
+
+def _extract_am_extras(command: Sequence[str]) -> List[str]:
+    """Return the extras passed to ``am start`` from an adb command."""
+
+    try:
+        start_index = command.index("-a")
+    except ValueError:
+        return list(command)
+    return command[start_index:]
+
+
+def test_instagram_share_does_not_include_text(tmp_path, automation):
+    media = tmp_path / "photo.jpg"
+    media.write_bytes(b"binary")
+
+    automation.publish_post("instagram", text="ignored", media=[media])
+
+    command, _timeout = automation.adb.run_calls[-1]
+    extras = " ".join(_extract_am_extras(command))
+    assert "android.intent.extra.TEXT" not in extras
+    assert "android.intent.extra.STREAM" in extras
+
+
+def test_other_networks_keep_text_extra(tmp_path, automation):
+    media = tmp_path / "clip.mp4"
+    media.write_bytes(b"binary")
+
+    automation.publish_post("twitter", text="caption", media=[media])
+
+    command, _timeout = automation.adb.run_calls[-1]
+    extras = " ".join(_extract_am_extras(command))
+    assert "android.intent.extra.TEXT" in extras
 
 
 def test_load_batch_plan_accepts_list(tmp_path):
