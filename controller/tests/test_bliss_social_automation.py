@@ -29,6 +29,9 @@ class FakeADB:
         self.run_calls.append((list(args), timeout))
         return SimpleNamespace(stdout="OK\n", returncode=0)
 
+    def ensure_device_ready(self):
+        return {"serial": self.serial or "FAKE", "status": "device"}
+
 
 @pytest.fixture()
 def automation():
