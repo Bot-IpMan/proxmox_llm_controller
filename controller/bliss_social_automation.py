@@ -24,6 +24,7 @@ import os
 import shlex
 import subprocess
 import sys
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple
@@ -34,6 +35,7 @@ __all__ = [
     "ADBCommandError",
     "SocialAppConfig",
     "ADBClient",
+    "PPADBClient",
     "ContentGenerator",
     "ContentGeneratorError",
     "BlissSocialAutomation",
@@ -305,7 +307,7 @@ class ADBClient:
     ) -> None:
         self.adb_path = adb_path or os.getenv("ADB_BINARY", "adb")
         self.serial = serial or os.getenv("BLISS_ADB_SERIAL")
-        self.connect_address = connect_address or os.getenv("BLISS_ADB_ADDRESS")
+        self.connect_address = _resolve_connect_address(connect_address)
         self.default_timeout = default_timeout
 
     # ──────────────────────────────────────────────────────────────────────
@@ -472,6 +474,286 @@ class ADBClient:
         result = self.run(["shell", *args], timeout=timeout or 30)
         return result.stdout.strip()
 
+
+def _resolve_connect_address(explicit: Optional[str]) -> Optional[str]:
+    if explicit:
+        return explicit
+    address = os.getenv("BLISS_ADB_ADDRESS")
+    if address:
+        return address
+    host = os.getenv("BLISS_ADB_HOST")
+    port = os.getenv("BLISS_ADB_PORT")
+    if host and port:
+        return f"{host}:{port}"
+    return None
+
+
+class PPADBClient:
+    """Pure Python alternative to :class:`ADBClient` using ``ppadb``."""
+
+    def __init__(
+        self,
+        *,
+        serial: Optional[str] = None,
+        connect_address: Optional[str] = None,
+        server_host: Optional[str] = None,
+        server_port: Optional[int] = None,
+        default_timeout: int = 60,
+    ) -> None:
+        try:
+            from ppadb.client import Client as PPadbClient  # type: ignore[import-not-found]
+        except ImportError as exc:  # pragma: no cover - optional dependency
+            raise RuntimeError("ppadb package is required for PPADBClient") from exc
+
+        host_env = server_host or os.getenv("PPADB_SERVER_HOST") or "127.0.0.1"
+        port_value = server_port or os.getenv("PPADB_SERVER_PORT") or "5037"
+        try:
+            port = int(port_value)
+        except (TypeError, ValueError) as exc:  # pragma: no cover - invalid env configuration
+            raise RuntimeError("PPADB_SERVER_PORT must be an integer") from exc
+
+        self._client = PPadbClient(host=host_env, port=port)
+        self.serial = serial or os.getenv("BLISS_ADB_SERIAL")
+        self.connect_address = _resolve_connect_address(connect_address)
+        self.default_timeout = default_timeout
+        self._server_host = host_env
+        self._server_port = port
+
+    # ──────────────────────────────────────────────────────────────────
+    # Internal helpers
+    # ──────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _split_address(address: str) -> Tuple[str, int]:
+        if ":" not in address:
+            raise ValueError(f"Invalid adb address '{address}'. Expected HOST:PORT")
+        host, port_str = address.rsplit(":", 1)
+        try:
+            return host, int(port_str)
+        except ValueError as exc:
+            raise ValueError(f"Invalid adb port in '{address}'") from exc
+
+    def _get_device(self) -> Any:
+        device = None
+        if self.serial:
+            device = self._client.device(self.serial)
+        if device is None:
+            devices = self._client.devices()
+            if not devices:
+                raise RuntimeError("No adb devices detected. Ensure the BlissOS VM is reachable.")
+            device = devices[0]
+            self.serial = getattr(device, "serial", self.serial)
+        return device
+
+    def _completed(self, args: Sequence[str], stdout: str = "", stderr: str = "", *, returncode: int = 0) -> subprocess.CompletedProcess[str]:
+        output = stdout
+        if output and not output.endswith("\n"):
+            output = f"{output}\n"
+        return subprocess.CompletedProcess(list(args), returncode, output, stderr)
+
+    # ──────────────────────────────────────────────────────────────────
+    # Public API mirroring :class:`ADBClient`
+    # ──────────────────────────────────────────────────────────────────
+
+    def run(
+        self,
+        args: Sequence[str],
+        *,
+        timeout: Optional[int] = None,
+        check: bool = True,
+        capture_output: bool = True,
+    ) -> subprocess.CompletedProcess[str]:
+        if not args:
+            raise ValueError("No adb arguments provided")
+        command = list(args)
+
+        target_serial: Optional[str] = None
+        if command[0] == "-s" and len(command) >= 3:
+            target_serial = command[1]
+            command = command[2:]
+
+        if not command:
+            raise ValueError("No adb arguments provided")
+
+        op = command[0]
+        if op == "shell":
+            output = self.shell(*command[1:], timeout=timeout)
+            return self._completed(list(args), output)
+
+        if op == "push" and len(command) >= 3:
+            output = self.push(Path(command[1]), command[2])
+            return self._completed(list(args), output)
+
+        if op == "install" and len(command) >= 2:
+            reinstall = "-r" in command[1:-1]
+            apk = command[-1]
+            output = self.install(Path(apk), reinstall=reinstall)
+            return self._completed(list(args), output)
+
+        if op == "uninstall" and len(command) >= 2:
+            keep_data = "-k" in command[1:-1]
+            package = command[-1]
+            output = self.uninstall(package, keep_data=keep_data)
+            return self._completed(list(args), output)
+
+        if op == "connect" and len(command) >= 2:
+            output = self.connect(command[1])
+            return self._completed(list(args), output)
+
+        if op == "disconnect":
+            all_devices = "--all" in command[1:]
+            target = None
+            if len(command) >= 2 and command[1] != "--all":
+                target = command[1]
+            output = self.disconnect(target, all_devices=all_devices)
+            return self._completed(list(args), output)
+
+        if op == "wait-for-device":
+            self.wait_for_device(serial=target_serial, timeout=timeout)
+            return self._completed(list(args), "")
+
+        if op == "devices":
+            devices = self.list_devices()
+            header = "List of devices attached"
+            lines = [header]
+            for device in devices:
+                serial = device.get("serial", "unknown")
+                status = device.get("status", "unknown")
+                lines.append(f"{serial}\t{status}")
+            return self._completed(list(args), "\n".join(lines))
+
+        raise NotImplementedError(f"Unsupported adb command via PPADBClient: {shlex.join(command)}")
+
+    def connect(self, address: Optional[str] = None, *, timeout: Optional[int] = None) -> str:  # noqa: ARG002 - parity with ADBClient
+        target = address or self.connect_address
+        if not target:
+            raise ValueError("No BlissOS address specified for adb connect")
+        host, port = self._split_address(target)
+        logger.info("Connecting to BlissOS device at %s", target)
+        response = self._client.remote_connect(host, port)
+        self.connect_address = target
+        if not self.serial:
+            self.serial = target
+        return str(response)
+
+    def disconnect(self, address: Optional[str] = None, *, timeout: Optional[int] = None, all_devices: bool = False) -> str:  # noqa: ARG002 - parity with ADBClient
+        if all_devices:
+            messages = []
+            for device in self._client.devices():
+                serial = getattr(device, "serial", None)
+                if serial and ":" in serial:
+                    host, port = self._split_address(serial)
+                    messages.append(str(self._client.remote_disconnect(host, port)))
+            return "\n".join(messages)
+
+        target = address or self.connect_address or self.serial
+        if not target:
+            raise ValueError("No adb address specified for disconnect")
+        host, port = self._split_address(target)
+        logger.info("Disconnecting adb session %s", target)
+        return str(self._client.remote_disconnect(host, port))
+
+    def list_devices(self) -> List[Dict[str, str]]:
+        devices: List[Dict[str, str]] = []
+        for device in self._client.devices():
+            serial = getattr(device, "serial", "unknown")
+            status = "unknown"
+            if hasattr(device, "get_state"):
+                try:
+                    status = str(device.get_state())
+                except Exception:  # pragma: no cover - defensive safeguard
+                    status = "unknown"
+            devices.append({"serial": serial, "status": status})
+        logger.info("Detected %d adb device(s) via ppadb", len(devices))
+        return devices
+
+    def ensure_device_ready(self) -> Dict[str, str]:
+        devices = self.list_devices()
+        if not devices:
+            raise RuntimeError("No adb devices detected. Ensure the BlissOS VM is reachable.")
+
+        desired_serial = self.serial or self.connect_address
+        if desired_serial:
+            for device in devices:
+                if device.get("serial") == desired_serial:
+                    status = device.get("status", "unknown")
+                    if status != "device":
+                        raise RuntimeError(
+                            f"ADB device {desired_serial} is not ready (status={status})."
+                        )
+                    logger.info("Using adb device %s (status=%s)", desired_serial, status)
+                    return device
+            raise RuntimeError(
+                f"Requested adb device '{desired_serial}' not found. Connected: {', '.join(d['serial'] for d in devices)}"
+            )
+
+        for device in devices:
+            status = device.get("status", "unknown")
+            if status == "device":
+                logger.info("Using adb device %s (status=%s)", device.get("serial"), status)
+                self.serial = device.get("serial") or self.serial
+                return device
+
+        raise RuntimeError(
+            "No adb devices are ready. Check that USB debugging is enabled and the device is authorised."
+        )
+
+    def wait_for_device(self, serial: Optional[str] = None, *, timeout: Optional[int] = None) -> None:
+        target = serial or self.serial or self.connect_address
+        if not target:
+            raise RuntimeError("No adb serial available to wait for device")
+        deadline = time.monotonic() + (timeout or self.default_timeout)
+        while time.monotonic() < deadline:
+            devices = self.list_devices()
+            for device in devices:
+                if device.get("serial") == target and device.get("status") == "device":
+                    self.serial = target
+                    return
+            time.sleep(0.5)
+        raise TimeoutError(f"Timed out waiting for device {target}")
+
+    def install(self, apk_path: Path, *, reinstall: bool = False, timeout: Optional[int] = None) -> str:  # noqa: ARG002 - parity with ADBClient
+        device = self._get_device()
+        logger.info("Installing APK %s via ppadb (reinstall=%s)", apk_path, reinstall)
+        result = device.install(str(apk_path), reinstall=reinstall)
+        return str(result or "Success")
+
+    def uninstall(self, package: str, *, keep_data: bool = False, timeout: Optional[int] = None) -> str:  # noqa: ARG002 - parity with ADBClient
+        device = self._get_device()
+        logger.info("Uninstalling package %s via ppadb (keep_data=%s)", package, keep_data)
+        result = device.uninstall(package, keepdata=keep_data)
+        return str(result or "Success")
+
+    def is_package_installed(self, package: str) -> bool:
+        output = self.shell("pm", "path", package)
+        return "package:" in output
+
+    def force_stop(self, package: str) -> None:
+        logger.info("Force stopping package %s via ppadb", package)
+        self.shell("am", "force-stop", package)
+
+    def launch_activity(self, component: str, *, extras: Sequence[str] = ()) -> str:
+        logger.info("Launching activity %s via ppadb", component)
+        output = self.shell("am", "start", "-n", component, *extras)
+        return output.strip()
+
+    def launch_via_monkey(self, package: str) -> str:
+        logger.info("Launching package %s via monkey (ppadb)", package)
+        output = self.shell("monkey", "-p", package, "-c", "android.intent.category.LAUNCHER", "1")
+        return output.strip()
+
+    def push(self, source: Path, destination: str) -> str:
+        device = self._get_device()
+        logger.info("Pushing %s -> %s via ppadb", source, destination)
+        device.push(str(source), destination)
+        return f"Pushed {source} -> {destination}"
+
+    def shell(self, *args: str, timeout: Optional[int] = None) -> str:
+        device = self._get_device()
+        command = shlex.join([str(arg) for arg in args])
+        logger.debug("Executing ppadb shell command: %s", command)
+        output = device.shell(command, timeout=timeout or self.default_timeout)
+        return str(output or "")
 
 def _encode_input_text(value: str) -> str:
     """Prepare text for ``adb shell input text`` (escape spaces and quotes)."""
