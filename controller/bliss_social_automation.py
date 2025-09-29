@@ -464,6 +464,19 @@ class ADBClient:
         result = self.run(["push", str(source), destination], timeout=120)
         return result.stdout.strip()
 
+    def ensure_remote_directory(self, path: str) -> None:
+        """Ensure a directory exists on the BlissOS device before uploading."""
+
+        normalized = path.strip()
+        if not normalized or normalized == "." or normalized == "/":
+            return
+
+        logger.debug("Ensuring remote directory exists: %s", normalized)
+        # ``adb shell mkdir -p`` succeeds when the path already exists. Running
+        # it unconditionally avoids additional state checks and keeps the
+        # behaviour deterministic across devices.
+        self.run(["shell", "mkdir", "-p", normalized], check=False)
+
     def wait_for_device(self, serial: Optional[str] = None, *, timeout: Optional[int] = None) -> None:
         args = []
         if serial or self.serial or self.connect_address:
@@ -748,6 +761,16 @@ class PPADBClient:
         device.push(str(source), destination)
         return f"Pushed {source} -> {destination}"
 
+    def ensure_remote_directory(self, path: str) -> None:
+        normalized = path.strip()
+        if not normalized or normalized == "." or normalized == "/":
+            return
+
+        device = self._get_device()
+        command = f"mkdir -p {shlex.quote(normalized)}"
+        logger.debug("Ensuring remote directory exists via ppadb: %s", command)
+        device.shell(command)
+
     def shell(self, *args: str, timeout: Optional[int] = None) -> str:
         device = self._get_device()
         command = shlex.join([str(arg) for arg in args])
@@ -846,9 +869,23 @@ class BlissSocialAutomation:
 
     def _prepare_remote_media(self, intent: ShareIntent) -> List[str]:
         remote_uris: List[str] = []
+        if not intent.media_files:
+            return remote_uris
+
+        base_directory = intent.remote_directory.rstrip("/") or "/"
+
+        if base_directory not in {"/", "."}:
+            self.adb.ensure_remote_directory(base_directory)
+
+        ensured_directories: set[str] = {base_directory} if base_directory not in {"/", "."} else set()
+
         for media in intent.media_files:
             destination = f"{intent.remote_directory.rstrip('/')}/{media.name}"
             logger.debug("Uploading media asset %s", media)
+            parent_directory = destination.rsplit("/", 1)[0] if "/" in destination else "/"
+            if parent_directory not in ensured_directories and parent_directory not in {"/", "."}:
+                self.adb.ensure_remote_directory(parent_directory)
+                ensured_directories.add(parent_directory)
             self.adb.push(media, destination)
             remote_uris.append(f"file://{destination}")
         return remote_uris
@@ -873,6 +910,12 @@ class BlissSocialAutomation:
 
         base_directory = remote_directory.rstrip("/") or "/"
         uploaded: Dict[str, str] = {}
+        ensured_directories: set[str] = set()
+
+        if base_directory not in {"/", "."}:
+            self.adb.ensure_remote_directory(base_directory)
+            ensured_directories.add(base_directory)
+
         for item in files:
             path = Path(item)
             if not path.exists():
@@ -882,6 +925,11 @@ class BlissSocialAutomation:
                 destination = f"/{path.name}"
             else:
                 destination = f"{base_directory}/{path.name}"
+
+            parent_directory = destination.rsplit("/", 1)[0] if "/" in destination else "/"
+            if parent_directory not in ensured_directories and parent_directory not in {"/", "."}:
+                self.adb.ensure_remote_directory(parent_directory)
+                ensured_directories.add(parent_directory)
 
             self.adb.push(path, destination)
             uploaded[str(path.resolve())] = destination
