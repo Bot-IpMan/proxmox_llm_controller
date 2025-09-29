@@ -7,9 +7,11 @@ from typing import List, Sequence
 import pytest
 
 from controller.bliss_social_automation import (
+    ADBClient,
     BlissSocialAutomation,
     ContentGenerator,
     ContentGeneratorError,
+    PPADBClient,
     _load_batch_plan,
 )
 
@@ -267,3 +269,108 @@ def test_generate_post_text_conflict(automation):
             generator=generator,
             generator_options={"provider": "openai"},
         )
+
+
+def test_adb_client_resolves_host_port_env(monkeypatch):
+    monkeypatch.delenv("BLISS_ADB_ADDRESS", raising=False)
+    monkeypatch.setenv("BLISS_ADB_HOST", "10.0.0.5")
+    monkeypatch.setenv("BLISS_ADB_PORT", "5555")
+
+    client = ADBClient(connect_address=None)
+
+    assert client.connect_address == "10.0.0.5:5555"
+
+
+def test_ppadb_client_mirrors_core_operations(monkeypatch, tmp_path):
+    commands = []
+    installs = []
+    uninstalls = []
+    pushes = []
+
+    class DummyDevice:
+        serial = "FAKE-SERIAL"
+
+        @staticmethod
+        def get_state():
+            return "device"
+
+        @staticmethod
+        def shell(command, timeout=None):  # pragma: no cover - timeout unused
+            commands.append((command, timeout))
+            return "OK"
+
+        @staticmethod
+        def install(path, reinstall=False):
+            installs.append((Path(path), reinstall))
+            return "Success"
+
+        @staticmethod
+        def uninstall(package, keepdata=False):
+            uninstalls.append((package, keepdata))
+            return "Success"
+
+        @staticmethod
+        def push(source, destination):
+            pushes.append((Path(source), destination))
+
+    class DummyClient:
+        def __init__(self, host, port):
+            self.host = host
+            self.port = port
+            self._devices = [DummyDevice()]
+
+        def devices(self):
+            return list(self._devices)
+
+        def device(self, serial):
+            for device in self._devices:
+                if device.serial == serial:
+                    return device
+            return None
+
+        @staticmethod
+        def remote_connect(host, port):
+            return f"connected to {host}:{port}"
+
+        @staticmethod
+        def remote_disconnect(host, port):
+            return f"disconnected {host}:{port}"
+
+    fake_ppadb = SimpleNamespace(client=SimpleNamespace(Client=DummyClient))
+    monkeypatch.setitem(sys.modules, "ppadb", fake_ppadb)
+    monkeypatch.setitem(sys.modules, "ppadb.client", fake_ppadb.client)
+
+    client = PPADBClient(serial="FAKE-SERIAL")
+
+    assert client.list_devices() == [{"serial": "FAKE-SERIAL", "status": "device"}]
+
+    client.wait_for_device()
+
+    shell_result = client.run(["shell", "am", "start"])
+    assert shell_result.stdout.strip() == "OK"
+    assert commands[-1][0] == "am start"
+
+    apk = tmp_path / "app.apk"
+    apk.write_bytes(b"binary")
+    install_result = client.run(["install", str(apk)])
+    assert "Success" in install_result.stdout
+    assert installs == [(apk, False)]
+
+    uninstall_result = client.run(["uninstall", "com.example.app"])
+    assert "Success" in uninstall_result.stdout
+    assert uninstalls == [("com.example.app", False)]
+
+    media = tmp_path / "photo.jpg"
+    media.write_bytes(b"data")
+    push_result = client.run(["push", str(media), "/sdcard/photo.jpg"])
+    assert "photo.jpg" in push_result.stdout
+    assert pushes == [(media, "/sdcard/photo.jpg")]
+
+    connect_result = client.run(["connect", "192.168.1.2:5555"])
+    assert "connected" in connect_result.stdout
+
+    disconnect_result = client.run(["disconnect", "192.168.1.2:5555"])
+    assert "disconnected" in disconnect_result.stdout
+
+    devices_output = client.run(["devices", "-l"])
+    assert "FAKE-SERIAL" in devices_output.stdout
