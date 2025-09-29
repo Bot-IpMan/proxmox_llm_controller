@@ -25,7 +25,7 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Iterable, List, MutableMapping, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple
 
 __all__ = [
     "ADBCommandError",
@@ -443,6 +443,60 @@ class BlissSocialAutomation:
         )
         return self.share(intent)
 
+    def publish_batch(
+        self,
+        plans: Sequence[Mapping[str, Any]],
+        *,
+        stop_on_error: bool = False,
+    ) -> List[Dict[str, Any]]:
+        """Execute multiple :meth:`publish_post` jobs sequentially."""
+
+        results: List[Dict[str, Any]] = []
+        for index, plan in enumerate(plans):
+            if "app" not in plan:
+                raise KeyError(f"Batch entry {index} is missing the 'app' field")
+
+            app_name = str(plan["app"])
+            text = plan.get("text")
+            subject = plan.get("subject")
+            remote_dir = str(plan.get("remote_directory", "/sdcard/Download"))
+            share_activity = plan.get("share_activity")
+
+            extras_obj = plan.get("extras") or {}
+            if not isinstance(extras_obj, Mapping):
+                raise TypeError(
+                    f"Batch entry {index} extras must be a mapping, got {type(extras_obj)!r}"
+                )
+            extras: Dict[str, str] = {str(k): str(v) for k, v in extras_obj.items()}
+
+            media_obj = plan.get("media") or []
+            if isinstance(media_obj, (str, Path)):
+                media_iterable: Iterable[Any] = [media_obj]
+            else:
+                if not isinstance(media_obj, Iterable):
+                    raise TypeError(
+                        f"Batch entry {index} media must be iterable or string, got {type(media_obj)!r}"
+                    )
+                media_iterable = media_obj
+            media_paths = [Path(str(item)) for item in media_iterable]
+
+            try:
+                output = self.publish_post(
+                    app_name,
+                    text=text if text is None or isinstance(text, str) else str(text),
+                    subject=subject if subject is None or isinstance(subject, str) else str(subject),
+                    media=media_paths,
+                    remote_directory=remote_dir,
+                    share_activity=share_activity if isinstance(share_activity, str) else None,
+                    extras=extras,
+                )
+                results.append({"app": app_name, "status": "ok", "output": output})
+            except Exception as exc:  # pragma: no cover - error path validated separately
+                results.append({"app": app_name, "status": "error", "error": str(exc)})
+                if stop_on_error:
+                    raise
+        return results
+
 
 # ──────────────────────────────────────────────────────────────────────────
 # Command line interface
@@ -505,6 +559,17 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Additional extras to include in the intent",
     )
 
+    batch_share_parser = subparsers.add_parser(
+        "batch-share",
+        help="Execute multiple share actions defined in a JSON plan",
+    )
+    batch_share_parser.add_argument("plan", type=Path, help="Path to the batch JSON file")
+    batch_share_parser.add_argument(
+        "--stop-on-error",
+        action="store_true",
+        help="Abort batch execution when a share action fails",
+    )
+
     input_parser = subparsers.add_parser("input-text", help="Send text using adb shell input text")
     input_parser.add_argument("text")
 
@@ -530,6 +595,25 @@ def _extras_from_pairs(pairs: Iterable[str]) -> Dict[str, str]:
         key, value = item.split("=", 1)
         extras[key] = value
     return extras
+
+
+def _load_batch_plan(path: Path) -> List[MutableMapping[str, Any]]:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:  # pragma: no cover - invalid JSON path unlikely
+        raise ValueError(f"Failed to parse batch plan '{path}': {exc}") from exc
+
+    if isinstance(data, list):
+        return [dict(entry) for entry in data]
+
+    if isinstance(data, dict):
+        posts = data.get("posts")
+        if isinstance(posts, list):
+            return [dict(entry) for entry in posts]
+
+    raise ValueError(
+        "Batch plan must be a list of entries or an object with a 'posts' list"
+    )
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -589,6 +673,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 extras=extras,
             )
             print(output)
+            return 0
+
+        if options.command == "batch-share":
+            plans = _load_batch_plan(options.plan)
+            results = automation.publish_batch(plans, stop_on_error=options.stop_on_error)
+            print(json.dumps(results, indent=2))
             return 0
 
         if options.command == "input-text":
