@@ -18,9 +18,9 @@
    PROXMOX_VERIFY_SSL=False
 
    # (необов'язково) BlissOS через ADB
-   # BLISS_ADB_ADDRESS=192.168.1.218:5555
+   # BLISS_ADB_ADDRESS=192.168.1.220:5555
    # або окремо:
-   # BLISS_ADB_HOST=192.168.1.218
+   # BLISS_ADB_HOST=192.168.1.220
    # BLISS_ADB_PORT=5555
    # BLISS_ADB_SERIAL=RQCT30W45KM
    # BLISS_OPENAPI_PATH=/app/openapi_bliss.json
@@ -210,9 +210,9 @@ OpenWebUI гнучко ставиться до структури OpenAPI-док
 
 ```env
 # host:port TCP-підключення до BlissOS (значення можна одразу додати в .env)
-BLISS_ADB_ADDRESS=192.168.1.218:5555
+BLISS_ADB_ADDRESS=192.168.1.220:5555
 # або окремо
-BLISS_ADB_HOST=192.168.1.218
+BLISS_ADB_HOST=192.168.1.220
 BLISS_ADB_PORT=5555
 
 # Для USB-пристроїв можна задати серійник напряму
@@ -226,7 +226,7 @@ ADB_BINARY=/usr/bin/adb  # adb вже встановлений в образі, 
 API-ендпоінти:
 
 * **Перелік пристроїв** – `GET /bliss/adb/devices`
-* **Підключення до BlissOS** – `POST /bliss/adb/connect {"host": "192.168.1.218", "port": 5555}`
+* **Підключення до BlissOS** – `POST /bliss/adb/connect {"host": "192.168.1.220", "port": 5555}`
 * **Виконання shell-команд** –
 
   ```json

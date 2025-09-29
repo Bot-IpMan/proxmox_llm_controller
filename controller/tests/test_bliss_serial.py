@@ -36,7 +36,7 @@ class BlissSerialResolutionTests(unittest.TestCase):
                 os.environ[name] = value
 
     def test_request_host_overrides_env_address(self) -> None:
-        os.environ["BLISS_ADB_ADDRESS"] = "192.168.1.218:5555"
+        os.environ["BLISS_ADB_ADDRESS"] = "192.168.1.220:5555"
         spec = app.BlissADBConnectSpec(host="192.168.1.220")
 
         resolved = app._resolve_bliss_address(spec)
@@ -44,7 +44,7 @@ class BlissSerialResolutionTests(unittest.TestCase):
         self.assertEqual(resolved, "192.168.1.220:5555")
 
     def test_request_port_is_applied(self) -> None:
-        os.environ["BLISS_ADB_ADDRESS"] = "192.168.1.218:5555"
+        os.environ["BLISS_ADB_ADDRESS"] = "192.168.1.220:5555"
         spec = app.BlissADBConnectSpec(host="192.168.1.220", port=5560)
 
         resolved = app._resolve_bliss_address(spec)
@@ -52,21 +52,21 @@ class BlissSerialResolutionTests(unittest.TestCase):
         self.assertEqual(resolved, "192.168.1.220:5560")
 
     def test_env_address_used_when_no_overrides(self) -> None:
-        os.environ["BLISS_ADB_ADDRESS"] = "192.168.1.218:5555"
+        os.environ["BLISS_ADB_ADDRESS"] = "192.168.1.220:5555"
         spec = app.BlissADBConnectSpec()
 
         resolved = app._resolve_bliss_address(spec)
 
-        self.assertEqual(resolved, "192.168.1.218:5555")
+        self.assertEqual(resolved, "192.168.1.220:5555")
 
     def test_serial_without_host_uses_env_host(self) -> None:
         os.environ["BLISS_ADB_SERIAL"] = "RQCT30W45KM"
-        os.environ["BLISS_ADB_HOST"] = "192.168.1.218"
+        os.environ["BLISS_ADB_HOST"] = "192.168.1.220"
         spec = app.BlissADBConnectSpec()
 
         resolved = app._resolve_bliss_address(spec)
 
-        self.assertEqual(resolved, "192.168.1.218:5555")
+        self.assertEqual(resolved, "192.168.1.220:5555")
 
 
 if __name__ == "__main__":

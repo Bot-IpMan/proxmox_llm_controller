@@ -1527,11 +1527,11 @@
                 },
                 "example": {
                   "rc": 0,
-                  "stdout": "List of devices attached\n192.168.1.218:5555    device product=bliss model=BlissOS\n",
+                  "stdout": "List of devices attached\n192.168.1.220:5555    device product=bliss model=BlissOS\n",
                   "stderr": "",
                   "devices": [
                     {
-                      "serial": "192.168.1.218:5555",
+                      "serial": "192.168.1.220:5555",
                       "state": "device",
                       "extras": {
                         "product": "bliss",
@@ -1582,7 +1582,7 @@
                 "$ref": "#/components/schemas/BlissADBConnectSpec"
               },
               "example": {
-                "host": "192.168.1.218",
+                "host": "192.168.1.220",
                 "port": 5555,
                 "force_disconnect": true,
                 "wait_for_device": true
@@ -1640,19 +1640,19 @@
                   ]
                 },
                 "example": {
-                  "address": "192.168.1.218:5555",
+                  "address": "192.168.1.220:5555",
                   "connected": true,
                   "steps": [
                     {
                       "action": "disconnect",
                       "rc": 0,
-                      "stdout": "disconnected 192.168.1.218:5555",
+                      "stdout": "disconnected 192.168.1.220:5555",
                       "stderr": ""
                     },
                     {
                       "action": "connect",
                       "rc": 0,
-                      "stdout": "connected to 192.168.1.218:5555",
+                      "stdout": "connected to 192.168.1.220:5555",
                       "stderr": ""
                     },
                     {
@@ -1708,7 +1708,7 @@
                 "single": {
                   "summary": "Роз'єднання конкретної адреси",
                   "value": {
-                    "host": "192.168.1.218",
+                    "host": "192.168.1.220",
                     "port": 5555
                   }
                 },
@@ -1753,9 +1753,9 @@
                   ]
                 },
                 "example": {
-                  "target": "192.168.1.218:5555",
+                  "target": "192.168.1.220:5555",
                   "rc": 0,
-                  "stdout": "disconnected 192.168.1.218:5555",
+                  "stdout": "disconnected 192.168.1.220:5555",
                   "stderr": ""
                 }
               }
@@ -1803,14 +1803,14 @@
                 "single": {
                   "summary": "Одна команда",
                   "value": {
-                    "serial": "192.168.1.218:5555",
+                    "serial": "192.168.1.220:5555",
                     "cmd": "settings get secure wifi_on"
                   }
                 },
                 "multiple": {
                   "summary": "Послідовність команд",
                   "value": {
-                    "host": "192.168.1.218",
+                    "host": "192.168.1.220",
                     "port": 5555,
                     "commands": [
                       "input keyevent 26",
@@ -1875,7 +1875,7 @@
                   ]
                 },
                 "example": {
-                  "serial": "192.168.1.218:5555",
+                  "serial": "192.168.1.220:5555",
                   "ok": true,
                   "steps": [
                     {
@@ -1932,7 +1932,7 @@
                 "args": {
                   "summary": "Формат args",
                   "value": {
-                    "serial": "192.168.1.218:5555",
+                    "serial": "192.168.1.220:5555",
                     "args": [
                       "install",
                       "/tmp/app.apk"
@@ -1942,7 +1942,7 @@
                 "command": {
                   "summary": "Формат рядка",
                   "value": {
-                    "host": "192.168.1.218",
+                    "host": "192.168.1.220",
                     "port": 5555,
                     "command": "shell am start -a android.settings.WIFI_SETTINGS"
                   }
@@ -1988,7 +1988,7 @@
                   ]
                 },
                 "example": {
-                  "serial": "192.168.1.218:5555",
+                  "serial": "192.168.1.220:5555",
                   "args": [
                     "shell",
                     "am",
@@ -2462,12 +2462,12 @@
           "serial": {
             "type": "string",
             "description": "ADB серійний номер або host:port. Має пріоритет над host/port.",
-            "example": "192.168.1.218:5555"
+            "example": "192.168.1.220:5555"
           },
           "host": {
             "type": "string",
             "description": "IP або hostname BlissOS для TCP ADB.",
-            "example": "192.168.1.218"
+            "example": "192.168.1.220"
           },
           "port": {
             "type": "integer",
@@ -2502,12 +2502,12 @@
           "serial": {
             "type": "string",
             "description": "ADB серійний номер або host:port",
-            "example": "192.168.1.218:5555"
+            "example": "192.168.1.220:5555"
           },
           "host": {
             "type": "string",
             "description": "IP або hostname BlissOS",
-            "example": "192.168.1.218"
+            "example": "192.168.1.220"
           },
           "port": {
             "type": "integer",
@@ -2530,12 +2530,12 @@
           "serial": {
             "type": "string",
             "description": "ADB серійний номер або host:port",
-            "example": "192.168.1.218:5555"
+            "example": "192.168.1.220:5555"
           },
           "host": {
             "type": "string",
             "description": "IP або hostname BlissOS",
-            "example": "192.168.1.218"
+            "example": "192.168.1.220"
           },
           "port": {
             "type": "integer",
@@ -2578,12 +2578,12 @@
           "serial": {
             "type": "string",
             "description": "ADB серійний номер або host:port",
-            "example": "192.168.1.218:5555"
+            "example": "192.168.1.220:5555"
           },
           "host": {
             "type": "string",
             "description": "IP або hostname BlissOS",
-            "example": "192.168.1.218"
+            "example": "192.168.1.220"
           },
           "port": {
             "type": "integer",

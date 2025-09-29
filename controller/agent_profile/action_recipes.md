@@ -161,7 +161,7 @@ POST /ssh/run
   ```json
   POST /bliss/adb/connect
   {
-    "host": "192.168.1.218",
+    "host": "192.168.1.220",
     "port": 5555,
     "force_disconnect": true
   }
