@@ -28,10 +28,10 @@ import paramiko
 # as ``uvicorn app:app`` or via ``python -m``) we prefer the absolute import and
 # fall back to the relative variant when running the project from a checked out
 # package.
-try:  # pragma: no cover - exercised in production via Docker image
-    from agent_profile import get_agent_profile
-except ImportError:  # pragma: no cover - used when running from source package
+try:  # pragma: no cover - used when running from source package
     from .agent_profile import get_agent_profile
+except ImportError:  # pragma: no cover - exercised in production via Docker image
+    from agent_profile import get_agent_profile
 
 # ─────────────────────────────────────────────
 # Логування
