@@ -22,6 +22,7 @@ class FakeADB:
         self.serial = None
         self.push_calls = []
         self.run_calls = []
+        self.mkdir_calls = []
 
     def push(self, source: Path, destination: str) -> str:
         self.push_calls.append((Path(source), destination))
@@ -30,6 +31,9 @@ class FakeADB:
     def run(self, args, timeout=None, check=True, capture_output=True):
         self.run_calls.append((list(args), timeout))
         return SimpleNamespace(stdout="OK\n", returncode=0)
+
+    def ensure_remote_directory(self, path: str) -> None:
+        self.mkdir_calls.append(path)
 
     def ensure_device_ready(self):
         return {"serial": self.serial or "FAKE", "status": "device"}
@@ -52,6 +56,7 @@ def test_publish_batch_executes_posts_and_collects_results(tmp_path, automation)
     results = automation.publish_batch(plans)
 
     assert [entry[0].name for entry in automation.adb.push_calls] == ["image.jpg"]
+    assert automation.adb.mkdir_calls == ["/sdcard/Download"]
     assert results[0]["status"] == "ok"
     assert results[1]["status"] == "ok"
     # Ensure adb run was invoked for both applications
@@ -91,6 +96,7 @@ def test_push_assets_transfers_files_and_returns_remote_paths(tmp_path, automati
     uploads = automation.push_assets([file_path], remote_directory="/sdcard/Target")
 
     assert automation.adb.push_calls == [(file_path, "/sdcard/Target/caption.txt")]
+    assert automation.adb.mkdir_calls == ["/sdcard/Target"]
     assert uploads[str(file_path.resolve())] == "/sdcard/Target/caption.txt"
 
 
@@ -365,6 +371,8 @@ def test_ppadb_client_mirrors_core_operations(monkeypatch, tmp_path):
     push_result = client.run(["push", str(media), "/sdcard/photo.jpg"])
     assert "photo.jpg" in push_result.stdout
     assert pushes == [(media, "/sdcard/photo.jpg")]
+    client.ensure_remote_directory("/sdcard/Created")
+    assert commands[-1][0] == "mkdir -p /sdcard/Created"
 
     connect_result = client.run(["connect", "192.168.1.2:5555"])
     assert "connected" in connect_result.stdout
