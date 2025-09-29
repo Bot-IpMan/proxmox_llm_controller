@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import shlex
 import subprocess
@@ -26,6 +27,8 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "ADBCommandError",
@@ -323,6 +326,7 @@ class ADBClient:
         capture_output: bool = True,
     ) -> subprocess.CompletedProcess[str]:
         command = self._adb_base() + list(args)
+        logger.debug("Executing adb command: %s", shlex.join(command))
         completed = subprocess.run(
             command,
             check=False,
@@ -332,6 +336,7 @@ class ADBClient:
         )
         if check and completed.returncode != 0:
             raise ADBCommandError(command, completed.returncode, completed.stdout, completed.stderr)
+        logger.debug("adb command finished with return code %s", completed.returncode)
         return completed
 
     # ──────────────────────────────────────────────────────────────────────
@@ -342,6 +347,7 @@ class ADBClient:
         target = address or self.connect_address
         if not target:
             raise ValueError("No BlissOS address specified for adb connect")
+        logger.info("Connecting to BlissOS device at %s", target)
         result = self.run(["connect", target], timeout=timeout, check=True)
         return result.stdout.strip()
 
@@ -351,10 +357,12 @@ class ADBClient:
             args.append("--all")
         elif address or self.connect_address:
             args.append(address or self.connect_address)  # type: ignore[arg-type]
+        logger.info("Disconnecting adb session%s", "s" if all_devices else "")
         result = self.run(args, timeout=timeout, check=True)
         return result.stdout.strip()
 
     def list_devices(self) -> List[Dict[str, str]]:
+        logger.debug("Listing adb devices")
         result = self.run(["devices", "-l"], timeout=15)
         devices: List[Dict[str, str]] = []
         for line in result.stdout.splitlines()[1:]:  # Skip the header
@@ -370,7 +378,41 @@ class ADBClient:
                     key, value = token.split(":", 1)
                     attrs[key] = value
             devices.append(attrs)
+        logger.info("Detected %d adb device(s)", len(devices))
         return devices
+
+    def ensure_device_ready(self) -> Dict[str, str]:
+        """Validate that at least one connected device is ready for commands."""
+
+        devices = self.list_devices()
+        if not devices:
+            raise RuntimeError("No adb devices detected. Ensure the BlissOS VM is reachable.")
+
+        desired_serial = self.serial or self.connect_address
+        if desired_serial:
+            for device in devices:
+                if device.get("serial") == desired_serial:
+                    status = device.get("status", "unknown")
+                    if status != "device":
+                        raise RuntimeError(
+                            f"ADB device {desired_serial} is not ready (status={status})."
+                        )
+                    logger.info("Using adb device %s (status=%s)", desired_serial, status)
+                    return device
+            raise RuntimeError(
+                f"Requested adb device '{desired_serial}' not found. Connected: {', '.join(d['serial'] for d in devices)}"
+            )
+
+        for device in devices:
+            status = device.get("status", "unknown")
+            if status == "device":
+                logger.info("Using adb device %s (status=%s)", device.get("serial"), status)
+                self.serial = device.get("serial") or self.serial
+                return device
+
+        raise RuntimeError(
+            "No adb devices are ready. Check that USB debugging is enabled and the device is authorised."
+        )
 
     # ──────────────────────────────────────────────────────────────────────
     # App management helpers
@@ -381,6 +423,7 @@ class ADBClient:
         if reinstall:
             args.append("-r")
         args.append(str(apk_path))
+        logger.info("Installing APK %s (reinstall=%s)", apk_path, reinstall)
         result = self.run(args, timeout=timeout, check=True)
         return result.stdout.strip()
 
@@ -389,6 +432,7 @@ class ADBClient:
         if keep_data:
             args.append("-k")
         args.append(package)
+        logger.info("Uninstalling package %s (keep_data=%s)", package, keep_data)
         result = self.run(args, timeout=timeout, check=True)
         return result.stdout.strip()
 
@@ -397,19 +441,23 @@ class ADBClient:
         return result.returncode == 0 and "package:" in result.stdout
 
     def force_stop(self, package: str) -> None:
+        logger.info("Force stopping package %s", package)
         self.run(["shell", "am", "force-stop", package], check=False)
 
     def launch_activity(self, component: str, *, extras: Sequence[str] = ()) -> str:
         args = ["shell", "am", "start", "-n", component, *extras]
+        logger.info("Launching activity %s", component)
         result = self.run(args, check=True)
         return result.stdout.strip()
 
     def launch_via_monkey(self, package: str) -> str:
         args = ["shell", "monkey", "-p", package, "-c", "android.intent.category.LAUNCHER", "1"]
+        logger.info("Launching package %s via monkey", package)
         result = self.run(args, check=True)
         return result.stdout.strip()
 
     def push(self, source: Path, destination: str) -> str:
+        logger.info("Pushing %s -> %s", source, destination)
         result = self.run(["push", str(source), destination], timeout=120)
         return result.stdout.strip()
 
@@ -475,6 +523,7 @@ class BlissSocialAutomation:
             if not self.adb.serial:
                 self.adb.serial = self.adb.connect_address
             self.adb.wait_for_device()
+        self.adb.ensure_device_ready()
 
     def install_app(self, apk_path: Path, *, reinstall: bool = False) -> str:
         self.ensure_device()
@@ -502,17 +551,21 @@ class BlissSocialAutomation:
         self.ensure_device()
         component = app.component(activity)
         if component:
+            logger.info("Launching %s using explicit activity", app.package)
             return self.adb.launch_activity(component)
+        logger.info("Launching %s using launcher intent", app.package)
         return self.adb.launch_via_monkey(app.package)
 
     def force_stop(self, app: SocialAppConfig) -> None:
         self.ensure_device()
+        logger.info("Force stopping %s", app.package)
         self.adb.force_stop(app.package)
 
     def _prepare_remote_media(self, intent: ShareIntent) -> List[str]:
         remote_uris: List[str] = []
         for media in intent.media_files:
             destination = f"{intent.remote_directory.rstrip('/')}/{media.name}"
+            logger.debug("Uploading media asset %s", media)
             self.adb.push(media, destination)
             remote_uris.append(f"file://{destination}")
         return remote_uris
@@ -579,6 +632,9 @@ class BlissSocialAutomation:
         self.ensure_device()
         remote_uris = self._prepare_remote_media(intent)
         command = self._build_share_command(intent, remote_uris)
+        logger.info(
+            "Sharing to %s with %d media file(s)", intent.app.package, len(remote_uris)
+        )
         result = self.adb.run(command, timeout=120)
         return result.stdout.strip()
 
@@ -647,6 +703,7 @@ class BlissSocialAutomation:
 
         resolved_text = text
         if generation_prompt and resolved_text is None:
+            logger.info("Generating post text for %s", app.package)
             resolved_text = self.generate_post_text(
                 generation_prompt,
                 generator=generator,
@@ -703,6 +760,7 @@ class BlissSocialAutomation:
             media_paths = [Path(str(item)) for item in media_iterable]
 
             try:
+                logger.info("Publishing batch entry %s", app_name)
                 output = self.publish_post(
                     app_name,
                     text=text if text is None or isinstance(text, str) else str(text),
@@ -715,6 +773,7 @@ class BlissSocialAutomation:
                 results.append({"app": app_name, "status": "ok", "output": output})
             except Exception as exc:  # pragma: no cover - error path validated separately
                 results.append({"app": app_name, "status": "error", "error": str(exc)})
+                logger.error("Failed to publish batch entry %s: %s", app_name, exc)
                 if stop_on_error:
                     raise
         return results
@@ -737,6 +796,18 @@ def build_arg_parser() -> argparse.ArgumentParser:
         type=int,
         default=60,
         help="Default adb command timeout in seconds",
+    )
+    parser.add_argument(
+        "--log-level",
+        dest="log_level",
+        default="INFO",
+        choices=["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"],
+        help="Logging verbosity for the automation script",
+    )
+    parser.add_argument(
+        "--log-file",
+        dest="log_file",
+        help="Optional file path for writing logs",
     )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -936,6 +1007,18 @@ def _load_batch_plan(path: Path) -> List[MutableMapping[str, Any]]:
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = build_arg_parser()
     options = parser.parse_args(argv)
+
+    log_level = getattr(logging, options.log_level.upper(), logging.INFO)
+    logging_kwargs: Dict[str, Any] = {
+        "level": log_level,
+        "format": "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    }
+    if options.log_file:
+        logging_kwargs["filename"] = options.log_file
+    else:
+        logging_kwargs["stream"] = sys.stderr
+    logging.basicConfig(**logging_kwargs)
+    logger.debug("CLI options: %s", options)
 
     adb_client = ADBClient(
         adb_path=options.adb_path,
