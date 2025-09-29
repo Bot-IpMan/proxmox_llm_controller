@@ -70,6 +70,7 @@ class SocialAppConfig:
     supports_multiple: bool = True
     extra_flags: Tuple[str, ...] = ()
     allow_text_extra: bool = True
+    grant_read_uri_permission: bool = True
 
     def component(self, activity: Optional[str]) -> Optional[str]:
         """Return ``package/activity`` if an activity is provided."""
@@ -615,14 +616,18 @@ class BlissSocialAutomation:
             extras.extend(["-e", "android.intent.extra.TEXT", intent.text])
         for key, value in intent.extras.items():
             extras.extend(["-e", key, value])
+        permission_flags: List[str] = []
         if remote_uris:
             if intent.app.supports_multiple and len(remote_uris) > 1:
                 action = "android.intent.action.SEND_MULTIPLE"
             for uri in remote_uris:
                 extras.extend(["--eu", "android.intent.extra.STREAM", uri])
+            if intent.app.grant_read_uri_permission:
+                permission_flags.append("--grant-read-uri-permission")
+
         extras.extend(intent.app.extra_flags)
         component = intent.app.share_component(intent.share_activity)
-        command = ["shell", "am", "start", "-a", action, "-t", mime]
+        command = ["shell", "am", "start", "-a", action, "-t", mime, *permission_flags]
         if component:
             command.extend(["-n", component])
         command.extend(extras)
