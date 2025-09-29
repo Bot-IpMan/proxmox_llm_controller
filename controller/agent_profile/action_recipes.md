@@ -175,6 +175,8 @@ POST /ssh/run
   }
   ```
 - **Disconnect** – `POST /bliss/adb/disconnect {"all": true}` to drop all TCP sessions or pass a `host`/`port` pair to close a single target.
+- **Check Wi-Fi toggle** – `POST /bliss/adb/shell {"commands": ["am start -a android.settings.WIFI_SETTINGS", "settings get global wifi_on"]}`. Значення `1` означає «увімкнено», `0` — «вимкнено». Якщо результат інший або команда повертає помилку, повідом користувача і запропонуй повторну спробу/альтернативу.
+- **List installed apps** – `POST /bliss/adb/shell {"cmd": "pm list packages"}` (через `adb shell`). Якщо отримуєш `adb: unknown command pm`, значить пропустив ключове слово `shell` — повтори запит із правильним синтаксисом.
 
 ### Як формулювати запити до ЛЛМ для BlissOS
 
