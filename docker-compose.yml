@@ -6,6 +6,9 @@ services:
     ports:
       - "11434:11434"
     environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - OLLAMA_USE_GPU=true
       - OLLAMA_KEEP_ALIVE=30s
       - OLLAMA_NUM_THREADS=4
       - OLLAMA_NUM_PARALLEL=1
@@ -13,6 +16,13 @@ services:
       - OPENBLAS_NUM_THREADS=4
       - EMBEDDING_MODEL_PROVIDER=ollama
       - EMBEDDING_MODEL=nomic-embed-text
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     healthcheck:
       test: ["CMD", "ollama", "list"]
       interval: 10s
