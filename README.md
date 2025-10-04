@@ -108,6 +108,24 @@ python -m controller.bliss_social_automation `
   > За замовчуванням у `docker-compose.yml` проброшено саме порт `8000`; якщо ви вручну змінили його на інший (наприклад, `18000`),
   > не забудьте використати нове значення і пересвідчитись, що контейнер `proxmox-controller` запущений (`docker ps`).
 
+### Увімкнення GPU для Ollama
+
+Оновлений `docker-compose.yml` автоматично запитує один GPU через `deploy.resources.reservations.devices` та прокидає всі
+необхідні змінні середовища (`NVIDIA_VISIBLE_DEVICES=all`, `NVIDIA_DRIVER_CAPABILITIES=compute,utility`, `OLLAMA_USE_GPU=true`).
+Щоб контейнер справді отримав доступ до відеокарти, переконайтесь у таких пунктах:
+
+1. На хості встановлено драйвер NVIDIA та [`nvidia-container-toolkit`](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
+   Перевірте, що GPU бачиться системою: `nvidia-smi`.
+2. Використовуйте сучасний `docker compose` (версія 2.20+) або викликайте `docker compose --compatibility up -d`, щоб ключ `deploy` був
+   перетворений у параметр `--gpus` для контейнера.
+3. Після запуску стеку перевірте, що всередині контейнера доступний GPU:
+
+   ```sh
+   docker compose exec ollama nvidia-smi
+   ```
+
+   У виводі має бути видно процес `ollama`/`ollama-init`. Тоді Ollama автоматично використовуватиме GPU для інференсу моделей.
+
 ### Усунення проблем з підключенням OpenWebUI → контролера
 
 Найчастіша причина повідомлення «Connection failed» – OpenWebUI не може дістатись до FastAPI‑сервісу. Перевірте послідовно:
