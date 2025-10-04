@@ -320,6 +320,21 @@ class CreateLXCReq(BaseModel):
             raise ValueError("rootfs_gb must be >= 4 GB")
         return v
 
+    @field_validator("password")
+    @classmethod
+    def _validate_password(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+
+        password = value.strip()
+        if not password:
+            return None
+
+        if len(password) < 5:
+            raise ValueError("password must be at least 5 characters long")
+
+        return password
+
 
 class LXCExecSpec(BaseModel):
     vmid: int
