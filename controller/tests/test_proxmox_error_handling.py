@@ -1,4 +1,7 @@
+import socket
+
 import pytest
+import requests
 from fastapi import HTTPException
 from proxmoxer.core import ResourceException
 
@@ -32,6 +35,24 @@ class FailingProxmox:
         return FailingNodeResource()
 
 
+class DNSFailingLXCResource:
+    def post(self, **payload: object) -> None:
+        raise requests.exceptions.ConnectionError("name resolution failed") from socket.gaierror(
+            socket.EAI_NONAME,
+            "pve",
+        )
+
+
+class DNSFailingNodeResource:
+    def __init__(self) -> None:
+        self.lxc = DNSFailingLXCResource()
+
+
+class DNSFailingProxmox:
+    def nodes(self, node: str) -> DNSFailingNodeResource:
+        return DNSFailingNodeResource()
+
+
 def test_create_lxc_surfaces_proxmox_error(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(app, "get_proxmox", lambda: FailingProxmox())
     monkeypatch.setattr(app, "_default_node", lambda prox, node: "pve")
@@ -60,3 +81,29 @@ def test_create_lxc_surfaces_proxmox_error(monkeypatch: pytest.MonkeyPatch) -> N
     entries = app._get_operation_log()
     assert len(entries) == 1
     assert entries[0]["error"].startswith("400 Bad Request: Parameter verification failed.")
+
+
+def test_create_lxc_dns_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PROXMOX_HOST", "pve")
+    monkeypatch.setattr(app, "get_proxmox", lambda: DNSFailingProxmox())
+    monkeypatch.setattr(app, "_default_node", lambda prox, node: "pve")
+
+    req = app.CreateLXCReq(
+        node=None,
+        vmid=1234,
+        hostname="win10",
+        cores=4,
+        memory=4096,
+        storage="local-lvm",
+        rootfs_gb=64,
+        bridge="vmbr0",
+        ip_cidr="dhcp",
+        ostemplate="local:vztmpl/windows10.tar.gz",
+    )
+
+    with pytest.raises(HTTPException) as excinfo:
+        app.create_lxc(req)
+
+    error = excinfo.value
+    assert error.status_code == 502
+    assert "could not resolve Proxmox host 'pve'" in error.detail
