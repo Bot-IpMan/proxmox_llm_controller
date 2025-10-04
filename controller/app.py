@@ -330,8 +330,8 @@ class CreateLXCReq(BaseModel):
         if not password:
             return None
 
-        if len(password) < 5:
-            raise ValueError("password must be at least 5 characters long")
+        if len(password) < 4:
+            raise ValueError("password must be at least 4 characters long")
 
         return password
 
