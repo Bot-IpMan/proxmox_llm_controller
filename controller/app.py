@@ -43,6 +43,37 @@ logging.basicConfig(
 )
 log = logging.getLogger("universal-controller")
 
+
+DEFAULT_LXC_PASSWORD_MIN_LENGTH = 5
+
+
+def _lxc_password_min_length() -> int:
+    """Return the configured minimum password length for LXC creation."""
+
+    raw_value = os.getenv("LXC_PASSWORD_MIN_LENGTH")
+    if raw_value is None:
+        return DEFAULT_LXC_PASSWORD_MIN_LENGTH
+
+    try:
+        min_length = int(raw_value)
+    except ValueError:
+        log.warning(
+            "Ignoring invalid LXC_PASSWORD_MIN_LENGTH=%r; using default %d",
+            raw_value,
+            DEFAULT_LXC_PASSWORD_MIN_LENGTH,
+        )
+        return DEFAULT_LXC_PASSWORD_MIN_LENGTH
+
+    if min_length < 0:
+        log.warning(
+            "Ignoring negative LXC_PASSWORD_MIN_LENGTH=%d; using default %d",
+            min_length,
+            DEFAULT_LXC_PASSWORD_MIN_LENGTH,
+        )
+        return DEFAULT_LXC_PASSWORD_MIN_LENGTH
+
+    return min_length
+
 # ─────────────────────────────────────────────
 # FastAPI
 # ─────────────────────────────────────────────
@@ -330,11 +361,11 @@ class CreateLXCReq(BaseModel):
         if not password:
             return None
 
-        # Proxmox API enforces a minimum password length of five characters.
-        # Validate it here to return a 422 validation error instead of
-        # triggering a 400 from Proxmox that would be reported as a 500.
-        if len(password) < 5:
-            raise ValueError("password must be at least 5 characters long")
+        min_length = _lxc_password_min_length()
+        if min_length > 0 and len(password) < min_length:
+            raise ValueError(
+                f"password must be at least {min_length} characters long"
+            )
 
         return password
 
