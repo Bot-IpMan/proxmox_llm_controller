@@ -110,14 +110,22 @@ python -m controller.bliss_social_automation `
 
 ### Увімкнення GPU для Ollama
 
-Оновлений `docker-compose.yml` автоматично запитує один GPU через `deploy.resources.reservations.devices` та прокидає всі
-необхідні змінні середовища (`NVIDIA_VISIBLE_DEVICES=all`, `NVIDIA_DRIVER_CAPABILITIES=compute,utility`, `OLLAMA_USE_GPU=true`).
-Щоб контейнер справді отримав доступ до відеокарти, переконайтесь у таких пунктах:
+Базовий `docker-compose.yml` тепер запускає Ollama у CPU-режимі (`OLLAMA_USE_GPU=false`), щоб уникнути помилки типу
+`could not select device driver "nvidia" with capabilities: [[gpu]]` на хостах без відеокарти.
+
+Якщо у вас є сумісний GPU, додайте файл `docker-compose.gpu.yml` при запуску:
+
+```sh
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+```
+
+Override-файл прокидає необхідні змінні середовища (`NVIDIA_VISIBLE_DEVICES`, `NVIDIA_DRIVER_CAPABILITIES`, `OLLAMA_USE_GPU=true`)
+та просить один GPU через `deploy.resources.reservations.devices`. Переконайтесь у таких пунктах:
 
 1. На хості встановлено драйвер NVIDIA та [`nvidia-container-toolkit`](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
    Перевірте, що GPU бачиться системою: `nvidia-smi`.
-2. Використовуйте сучасний `docker compose` (версія 2.20+) або викликайте `docker compose --compatibility up -d`, щоб ключ `deploy` був
-   перетворений у параметр `--gpus` для контейнера.
+2. Використовуйте сучасний `docker compose` (версія 2.20+) або викликайте `docker compose --compatibility up -d` з обома файлами,
+   щоб ключ `deploy` був перетворений у параметр `--gpus` для контейнера.
 3. Після запуску стеку перевірте, що всередині контейнера доступний GPU:
 
    ```sh
