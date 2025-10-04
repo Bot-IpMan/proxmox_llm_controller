@@ -405,9 +405,7 @@ class CreateLXCReq(BaseModel):
         try:
             socket.getaddrinfo(hostname, None)
         except socket.gaierror as exc:
-            raise ValueError(
-                f"hostname '{hostname}' cannot be resolved. Provide an addressable hostname or IP, or update DNS/hosts."
-            ) from exc
+            log.debug("Hostname %s could not be resolved during validation: %s", hostname, exc)
 
         return hostname
 
