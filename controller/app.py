@@ -14,9 +14,35 @@ from datetime import datetime, timezone
 import re
 from string import Template
 
-from fastapi import FastAPI, HTTPException, Query
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator, IPvAnyAddress
+try:  # pragma: no cover - exercised when optional dependencies are installed
+    from fastapi import FastAPI, HTTPException, Query
+    from fastapi.middleware.cors import CORSMiddleware
+except ModuleNotFoundError:  # pragma: no cover - unit tests use lightweight fallback
+    from ._fastapi_fallback import (  # type: ignore
+        FastAPI,
+        HTTPException,
+        Query,
+        CORSMiddleware,
+    )
+
+try:  # pragma: no cover - exercised when optional dependencies are installed
+    from pydantic import (
+        BaseModel,
+        ConfigDict,
+        Field,
+        field_validator,
+        model_validator,
+        IPvAnyAddress,
+    )
+except ModuleNotFoundError:  # pragma: no cover - unit tests use lightweight fallback
+    from ._pydantic_fallback import (  # type: ignore
+        BaseModel,
+        ConfigDict,
+        Field,
+        field_validator,
+        model_validator,
+        IPvAnyAddress,
+    )
 from proxmoxer import ProxmoxAPI
 from proxmoxer.core import ResourceException
 import paramiko
