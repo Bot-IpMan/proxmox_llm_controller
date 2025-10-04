@@ -1508,7 +1508,8 @@ def bliss_adb_shell(spec: BlissADBShellSpec) -> Dict[str, Any]:
         if rc != 0:
             break
 
-    ok = all(step["rc"] == 0 for step in steps)return {"serial": serial, "ok": ok, "steps": steps}
+    ok = all(step["rc"] == 0 for step in steps)
+    return {"serial": serial, "ok": ok, "steps": steps}
 
 
 @app.post("/bliss/adb/command")
