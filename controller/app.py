@@ -374,6 +374,43 @@ class CreateLXCReq(BaseModel):
     ostemplate: str                        # "local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst"
     start: bool = True
 
+    @field_validator("hostname")
+    @classmethod
+    def _validate_hostname(cls, value: str) -> str:
+        hostname = value.strip()
+        if not hostname:
+            raise ValueError("hostname must be provided")
+
+        # IP addresses are accepted as-is without additional validation
+        try:
+            import ipaddress
+
+            ipaddress.ip_address(hostname)
+            return hostname
+        except ValueError:
+            pass
+
+        if len(hostname) > 255:
+            raise ValueError("hostname must be 255 characters or less")
+
+        hostname_no_trailing_dot = hostname[:-1] if hostname.endswith(".") else hostname
+
+        label_pattern = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$")
+        labels = hostname_no_trailing_dot.split(".")
+        if any(not label or not label_pattern.match(label) for label in labels):
+            raise ValueError(
+                "hostname must consist of alphanumeric characters or hyphens separated by dots"
+            )
+
+        try:
+            socket.getaddrinfo(hostname, None)
+        except socket.gaierror as exc:
+            raise ValueError(
+                f"hostname '{hostname}' cannot be resolved. Provide an addressable hostname or IP, or update DNS/hosts."
+            ) from exc
+
+        return hostname
+
     @field_validator("ip_cidr")
     @classmethod
     def validate_ip_cidr(cls, v: Union[str, None]) -> Union[str, None]:
