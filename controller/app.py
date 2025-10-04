@@ -20,6 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from proxmoxer import ProxmoxAPI
 from proxmoxer.core import ResourceException
 import paramiko
+import requests
 
 # NOTE:
 # ``uvicorn`` loads this module via ``app:app`` which can set ``__package__``
@@ -795,6 +796,18 @@ def _http_error_from_proxmox(path: str, exc: Exception) -> HTTPException:
         if not 100 <= status_code <= 599:
             status_code = 500
         return _log_and_raise(status_code, detail)
+
+    if isinstance(exc, requests.exceptions.RequestException):
+        root_cause: Optional[BaseException] = exc
+        while root_cause.__cause__ is not None:
+            root_cause = root_cause.__cause__
+        if isinstance(root_cause, socket.gaierror):
+            host = os.getenv("PROXMOX_HOST", "<unknown>")
+            detail = (
+                f"{path} failed: could not resolve Proxmox host '{host}'. "
+                "Check the PROXMOX_HOST environment variable or DNS settings."
+            )
+            return _log_and_raise(502, detail)
 
     return _http_500(f"{path} failed: {exc}")
 
