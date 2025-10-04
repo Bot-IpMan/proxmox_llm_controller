@@ -18,6 +18,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator, IPvAnyAddress
 from proxmoxer import ProxmoxAPI
+from proxmoxer.core import ResourceException
 import paramiko
 
 # NOTE:
@@ -774,9 +775,28 @@ class BlissADBCommandSpec(BlissADBTarget):
 # ─────────────────────────────────────────────
 # Хелпери
 # ─────────────────────────────────────────────
-def _http_500(detail: str) -> HTTPException:
+def _log_and_raise(status_code: int, detail: str) -> HTTPException:
+    """Log *detail* and return an ``HTTPException`` with *status_code*."""
+
     log.exception(detail)
-    return HTTPException(status_code=500, detail=detail)
+    return HTTPException(status_code=status_code, detail=detail)
+
+
+def _http_500(detail: str) -> HTTPException:
+    return _log_and_raise(500, detail)
+
+
+def _http_error_from_proxmox(path: str, exc: Exception) -> HTTPException:
+    """Translate Proxmox API errors into ``HTTPException`` instances."""
+
+    if isinstance(exc, ResourceException):
+        detail = f"{path} failed: {exc}"
+        status_code = exc.status_code if isinstance(exc.status_code, int) else 500
+        if not 100 <= status_code <= 599:
+            status_code = 500
+        return _log_and_raise(status_code, detail)
+
+    return _http_500(f"{path} failed: {exc}")
 
 
 def _bool_env(name: str, default: bool = False) -> bool:
@@ -1409,7 +1429,7 @@ def pve_version() -> Dict[str, Any]:
         prox = get_proxmox()
         return prox.version.get()
     except Exception as e:
-        raise _http_500(f"/version failed: {e}")
+        raise _http_error_from_proxmox("/version", e)
 
 
 @app.get("/nodes")
@@ -1418,7 +1438,7 @@ def list_nodes() -> List[Dict[str, Any]]:
         prox = get_proxmox()
         return prox.nodes.get()
     except Exception as e:
-        raise _http_500(f"/nodes failed: {e}")
+        raise _http_error_from_proxmox("/nodes", e)
 
 
 @app.get("/lxc")
@@ -1428,7 +1448,7 @@ def list_lxc(node: Optional[str] = Query(None, description="Назва вузл�
         node_name = _default_node(prox, node)
         return prox.nodes(node_name).lxc.get()
     except Exception as e:
-        raise _http_500(f"/lxc failed: {e}")
+        raise _http_error_from_proxmox("/lxc", e)
 
 
 @app.get("/lxc-list")
@@ -1449,7 +1469,7 @@ def start_lxc(req: StartStopReq) -> Dict[str, Any]:
         res = prox.nodes(node_name).lxc(req.vmid).status.start.post()
         return {"ok": True, "task": res}
     except Exception as e:
-        raise _http_500(f"/lxc/start failed: {e}")
+        raise _http_error_from_proxmox("/lxc/start", e)
 
 
 @app.post("/lxc/stop")
@@ -1463,7 +1483,7 @@ def stop_lxc(req: StartStopReq, force: bool = Query(False, description="True —
             res = prox.nodes(node_name).lxc(req.vmid).status.shutdown.post()
         return {"ok": True, "task": res}
     except Exception as e:
-        raise _http_500(f"/lxc/stop failed: {e}")
+        raise _http_error_from_proxmox("/lxc/stop", e)
 
 
 @app.post("/lxc/create")
@@ -1517,7 +1537,7 @@ def create_lxc(req: CreateLXCReq) -> Dict[str, Any]:
         return {"created": True, "task": task, "vmid": req.vmid, "node": node_name}
     except Exception as e:
         error_message = str(e)
-        raise _http_500(f"/lxc/create failed: {e}")
+        raise _http_error_from_proxmox("/lxc/create", e)
     finally:
         metadata: Dict[str, Any] = {"vmid": req.vmid}
         if node_name is not None:
