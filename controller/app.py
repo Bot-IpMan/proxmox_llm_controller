@@ -1,3 +1,6 @@
+Ось виправлений `app.py` з правильною валідацією `ip_cidr`:
+
+```python
 import os
 import json
 import shlex
@@ -8,14 +11,14 @@ import shutil
 from io import StringIO
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional, Dict, Any, List, Tuple, Literal, ClassVar
+from typing import Optional, Dict, Any, List, Tuple, Literal, ClassVar, Union
 from datetime import datetime, timezone
 import re
 from string import Template
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator, IPvAnyNetwork, IPvAnyAddress
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator, IPvAnyAddress
 from proxmoxer import ProxmoxAPI
 import paramiko
 
@@ -266,7 +269,10 @@ class CreateLXCReq(BaseModel):
     storage: str
     rootfs_gb: int = 16
     bridge: str = "vmbr0"
-    ip_cidr: Optional[IPvAnyNetwork] = None  # напр. "192.168.1.150/24"
+    ip_cidr: Union[str, None] = Field(
+        default=None,
+        description="IP address in CIDR format (e.g., 192.168.1.113/24) or 'dhcp'",
+    )
     gateway: Optional[IPvAnyAddress] = None
     ssh_public_key: Optional[str] = None
     password: Optional[str] = None      # тимчасовий пароль root у контейнері
@@ -274,6 +280,27 @@ class CreateLXCReq(BaseModel):
     features: Optional[Dict[str, int]] = None  # напр. {"nesting":1,"keyctl":1}
     ostemplate: str                        # "local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst"
     start: bool = True
+
+    @field_validator("ip_cidr")
+    @classmethod
+    def validate_ip_cidr(cls, v: Union[str, None]) -> Union[str, None]:
+        if v is None:
+            return None
+        
+        v = v.strip()
+        if not v:
+            return None
+            
+        if v.lower() == "dhcp":
+            return "dhcp"
+        
+        # Перевіряємо, чи це валідний CIDR (хост або мережа)
+        import ipaddress
+        try:
+            ipaddress.ip_interface(v)  # Приймає і 192.168.1.113/24
+            return v
+        except ValueError:
+            raise ValueError(f"Invalid IP CIDR format: {v}. Use format like '192.168.1.113/24' or 'dhcp'")
 
     @field_validator("cores")
     @classmethod
@@ -731,7 +758,8 @@ def _ssh_pct_list() -> List[Dict[str, Any]]:
     host, user, key = _require_pve_ssh()
     cmd = ["ssh", "-i", key, f"{user}@{host}", "pct list --output-format json"]
     try:
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        res = subprocess.run(cmd, capture_output=True```python
+, text=True, timeout=60)
     except Exception as e:
         raise RuntimeError(f"SSH/pct call failed: {e}")
     if res.returncode != 0:
@@ -1289,11 +1317,18 @@ def create_lxc(req: CreateLXCReq) -> Dict[str, Any]:
             "start": int(req.start),
         }
 
+        # Обробка мережі
         net0 = f"name=eth0,bridge={req.bridge}"
         if req.ip_cidr:
-            net0 += f",ip={req.ip_cidr.with_prefixlen}"
-            if req.gateway:
-                net0 += f",gw={req.gateway.compressed}"
+            if req.ip_cidr.lower() == "dhcp":
+                net0 += ",ip=dhcp"
+            else:
+                # Перетворюємо на ipaddress.IPv4Interface або IPv6Interface
+                import ipaddress
+                ip_interface = ipaddress.ip_interface(req.ip_cidr)
+                net0 += f",ip={ip_interface.with_prefixlen}"
+                if req.gateway:
+                    net0 += f",gw={req.gateway.compressed}"
         payload["net0"] = net0
 
         if req.ssh_public_key:
@@ -1477,8 +1512,7 @@ def bliss_adb_shell(spec: BlissADBShellSpec) -> Dict[str, Any]:
         if rc != 0:
             break
 
-    ok = all(step["rc"] == 0 for step in steps)
-    return {"serial": serial, "ok": ok, "steps": steps}
+    ok = all(step["rc"] == 0 for step in steps)return {"serial": serial, "ok": ok, "steps": steps}
 
 
 @app.post("/bliss/adb/command")
