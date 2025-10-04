@@ -1,6 +1,3 @@
-Ось виправлений `app.py` з правильною валідацією `ip_cidr`:
-
-```python
 import os
 import json
 import shlex
