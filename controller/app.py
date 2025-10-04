@@ -43,8 +43,11 @@ except ModuleNotFoundError:  # pragma: no cover - unit tests use lightweight fal
         model_validator,
         IPvAnyAddress,
     )
-from proxmoxer import ProxmoxAPI
-from proxmoxer.core import ResourceException
+try:  # pragma: no cover - exercised when optional dependencies are installed
+    from proxmoxer import ProxmoxAPI
+    from proxmoxer.core import ResourceException
+except ModuleNotFoundError:  # pragma: no cover - unit tests use lightweight fallback
+    from ._proxmoxer_fallback import ProxmoxAPI, ResourceException  # type: ignore
 import paramiko
 import requests
 
