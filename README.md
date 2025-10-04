@@ -396,6 +396,36 @@ OpenWebUI гнучко ставиться до структури OpenAPI-док
       }'
   ```
 
+## Розробка та тестування
+
+Щоб локально запускати сервіси або тести, потрібні Python‑залежності з каталогу
+`controller/requirements.txt`. Скористайтесь одним із варіантів:
+
+1. **Встановлення залежностей у поточне середовище.**
+
+   ```bash
+   pip install -r controller/requirements.txt
+   pytest controller/tests -q
+   ```
+
+2. **Виконання тестів у готовому Docker‑контейнері.**
+
+   ```bash
+   docker compose exec proxmox-controller pytest /app/tests -q
+   ```
+
+3. **Ізольоване віртуальне середовище (рекомендовано для розробки).**
+
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate  # Windows: venv\Scripts\activate
+   pip install -r controller/requirements.txt
+   pytest controller/tests -q
+   ```
+
+У кожному випадку буде встановлено `fastapi`, `paramiko`, `pydantic`, `proxmoxer`
+та інші залежності, без яких автоматизовані тести завершуються помилками імпорту.
+
 ### BlissOS 16.9.7 через ADB
 
 Для керування BlissOS (Android x86) контролер виконує команди `adb`. Налаштуйте TCP-підключення через змінні середовища:
