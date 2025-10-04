@@ -755,8 +755,7 @@ def _ssh_pct_list() -> List[Dict[str, Any]]:
     host, user, key = _require_pve_ssh()
     cmd = ["ssh", "-i", key, f"{user}@{host}", "pct list --output-format json"]
     try:
-        res = subprocess.run(cmd, capture_output=True```python
-, text=True, timeout=60)
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
     except Exception as e:
         raise RuntimeError(f"SSH/pct call failed: {e}")
     if res.returncode != 0:
