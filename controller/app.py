@@ -5,6 +5,7 @@ import logging
 import subprocess
 import socket
 import shutil
+from collections import deque
 from io import StringIO
 from functools import lru_cache
 from pathlib import Path
@@ -45,6 +46,68 @@ log = logging.getLogger("universal-controller")
 
 
 DEFAULT_LXC_PASSWORD_MIN_LENGTH = 5
+
+
+_OPERATION_LOG_MAX_ENTRIES = 200
+_operation_log: deque[Dict[str, Any]] = deque(maxlen=_OPERATION_LOG_MAX_ENTRIES)
+
+
+def _utc_now_iso() -> str:
+    """Return current UTC timestamp in ISO-8601 format with ``Z`` suffix."""
+
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _mask_sensitive_fields(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Return a copy of *payload* with sensitive keys replaced by placeholders."""
+
+    masked_keys = {"password", "ssh-public-keys", "ssh_public_key"}
+    sanitized: Dict[str, Any] = {}
+    for key, value in payload.items():
+        if key in masked_keys and value is not None:
+            sanitized[key] = "***"
+        else:
+            sanitized[key] = value
+    return sanitized
+
+
+def _record_operation(
+    kind: str,
+    *,
+    command: Optional[str] = None,
+    payload: Optional[Dict[str, Any]] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+    result: Optional[Dict[str, Any]] = None,
+    error: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Append an entry to the in-memory operation log and return it."""
+
+    entry: Dict[str, Any] = {"timestamp": _utc_now_iso(), "kind": kind}
+    if command is not None:
+        entry["command"] = command
+    if payload is not None:
+        entry["payload"] = payload
+    if metadata is not None:
+        entry["metadata"] = metadata
+    if result is not None:
+        entry["result"] = result
+    if error is not None:
+        entry["error"] = error
+
+    _operation_log.append(entry)
+    return entry
+
+
+def _get_operation_log() -> List[Dict[str, Any]]:
+    """Return a snapshot of the stored operation log entries."""
+
+    return list(_operation_log)
+
+
+def _clear_operation_log() -> None:
+    """Remove all entries from the operation log (used primarily in tests)."""
+
+    _operation_log.clear()
 
 
 def _lxc_password_min_length() -> int:
@@ -467,6 +530,39 @@ class DeploySpec(BaseModel):
     ])
 
 
+class OperationLogEntry(BaseModel):
+    timestamp: str
+    kind: str
+    command: Optional[str] = None
+    payload: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None
+    result: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+
+
+class OperationLogResponse(BaseModel):
+    count: int
+    entries: List[OperationLogEntry]
+
+
+@app.get("/operations/logs", response_model=OperationLogResponse)
+def list_operation_logs(
+    limit: int = Query(
+        20,
+        ge=1,
+        le=100,
+        description="Maximum number of recent log entries to return.",
+    )
+) -> OperationLogResponse:
+    """Return recent controller operations for audit and explanations."""
+
+    entries = _get_operation_log()
+    if limit:
+        entries = entries[-limit:]
+    entries = list(reversed(entries))
+    return OperationLogResponse(count=len(entries), entries=entries)
+
+
 class SSHSpec(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
@@ -803,16 +899,42 @@ def _ssh_pct_list() -> List[Dict[str, Any]]:
     """
     host, user, key = _require_pve_ssh()
     cmd = ["ssh", "-i", key, f"{user}@{host}", "pct list --output-format json"]
+    command_display = " ".join(shlex.quote(part) for part in cmd)
+    result_info: Optional[Dict[str, Any]] = None
+    error_message: Optional[str] = None
+
     try:
         res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-    except Exception as e:
-        raise RuntimeError(f"SSH/pct call failed: {e}")
-    if res.returncode != 0:
-        raise RuntimeError(f"pct list rc={res.returncode}: {res.stderr or res.stdout}")
-    try:
-        return json.loads(res.stdout)
-    except Exception:
-        raise RuntimeError(f"Unexpected pct output: {res.stdout!r}")
+        if res.returncode != 0:
+            error_message = f"pct list rc={res.returncode}: {res.stderr or res.stdout}"
+            result_info = {"rc": res.returncode}
+            raise RuntimeError(error_message)
+
+        try:
+            data = json.loads(res.stdout)
+        except Exception as exc:
+            preview = res.stdout[:200]
+            result_info = {
+                "rc": res.returncode,
+                "stdout_preview": preview,
+            }
+            error_message = f"Unexpected pct output: {res.stdout!r}"
+            raise RuntimeError(error_message) from exc
+
+        result_info = {"rc": res.returncode, "items": len(data)}
+        return data
+    except Exception as exc:
+        if error_message is None:
+            error_message = f"SSH/pct call failed: {exc}"
+        raise
+    finally:
+        _record_operation(
+            "ssh.exec",
+            command=command_display,
+            metadata={"source": "pct list"},
+            result=result_info,
+            error=error_message,
+        )
 
 
 def _first_non_empty(*values: Any) -> Optional[Any]:
@@ -1346,6 +1468,11 @@ def stop_lxc(req: StartStopReq, force: bool = Query(False, description="True —
 
 @app.post("/lxc/create")
 def create_lxc(req: CreateLXCReq) -> Dict[str, Any]:
+    node_name: Optional[str] = None
+    sanitized_payload: Optional[Dict[str, Any]] = None
+    result_info: Optional[Dict[str, Any]] = None
+    error_message: Optional[str] = None
+
     try:
         prox = get_proxmox()
         node_name = _default_node(prox, req.node)
@@ -1384,10 +1511,24 @@ def create_lxc(req: CreateLXCReq) -> Dict[str, Any]:
         if req.features:
             payload["features"] = {k: bool(v) for k, v in req.features.items()}
 
+        sanitized_payload = _mask_sensitive_fields(payload)
         task = prox.nodes(node_name).lxc.post(**payload)
+        result_info = {"task": task}
         return {"created": True, "task": task, "vmid": req.vmid, "node": node_name}
     except Exception as e:
+        error_message = str(e)
         raise _http_500(f"/lxc/create failed: {e}")
+    finally:
+        metadata: Dict[str, Any] = {"vmid": req.vmid}
+        if node_name is not None:
+            metadata["node"] = node_name
+        _record_operation(
+            "lxc.create",
+            payload=sanitized_payload,
+            metadata=metadata,
+            result=result_info,
+            error=error_message,
+        )
 
 
 @app.post("/lxc/exec")
