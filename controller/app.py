@@ -330,8 +330,11 @@ class CreateLXCReq(BaseModel):
         if not password:
             return None
 
-        if len(password) < 4:
-            raise ValueError("password must be at least 4 characters long")
+        # Proxmox API enforces a minimum password length of five characters.
+        # Validate it here to return a 422 validation error instead of
+        # triggering a 400 from Proxmox that would be reported as a 500.
+        if len(password) < 5:
+            raise ValueError("password must be at least 5 characters long")
 
         return password
 
