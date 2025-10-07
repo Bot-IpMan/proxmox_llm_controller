@@ -12,8 +12,6 @@ services:
       - OLLAMA_NUM_PARALLEL=1
       - OMP_NUM_THREADS=4
       - OPENBLAS_NUM_THREADS=4
-      - EMBEDDING_MODEL_PROVIDER=ollama
-      - EMBEDDING_MODEL=nomic-embed-text
     healthcheck:
       test: ["CMD", "ollama", "list"]
       interval: 10s
@@ -23,19 +21,6 @@ services:
     volumes:
       - ollama:/root/.ollama
 
-  # Закоментували ollama-init - моделі завантажимо вручну
-  # ollama-init:
-  #   image: ollama/ollama:latest
-  #   depends_on:
-  #     ollama:
-  #       condition: service_healthy
-  #   environment:
-  #     OLLAMA_AUTO_PULL_MODELS: "${OLLAMA_AUTO_PULL_MODELS:-}"
-  #   volumes:
-  #     - ./scripts/ollama-init.sh:/usr/local/bin/ollama-init.sh:ro
-  #   entrypoint: ["/usr/local/bin/ollama-init.sh"]
-  #   restart: "no"
-
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
     container_name: open-webui
@@ -44,19 +29,33 @@ services:
     depends_on:
       ollama:
         condition: service_healthy
-      # Прибрали залежність від ollama-init
-      # ollama-init:
-      #   condition: service_completed_successfully
     security_opt:
       - seccomp=unconfined
       - apparmor=unconfined
     environment:
+      # Ollama підключення
       - OLLAMA_BASE_URL=http://ollama:11434
       - OLLAMA_API_BASE_URL=http://ollama:11434
-      - ENABLE_RAG_LOCAL=true
+      
+      # КРИТИЧНО: Використовуємо Ollama замість sentence-transformers
+      - RAG_EMBEDDING_ENGINE=ollama
+      - RAG_EMBEDDING_MODEL=nomic-embed-text
+      - ENABLE_RAG_WEB_SEARCH=true
+      
+      # Вимикаємо локальні моделі sentence-transformers
+      - RAG_EMBEDDING_MODEL_AUTO_UPDATE=false
+      - RAG_TEMPLATE="Use the following context as your learned knowledge:\n\n[context]\n\nBased on the above context, answer the query.\n\nQuery: [query]"
+      
+      # Whisper - використовуємо легку модель
+      - WHISPER_MODEL=base
+      - WHISPER_MODEL_AUTO_UPDATE=false
+      
+      # Продуктивність
       - OLLAMA_NUM_PARALLEL=1
-      - WHISPER_MODEL=large-v3
       - UVICORN_LOOP=asyncio
+      
+      # Безпека (для dev/test)
+      # - WEBUI_AUTH=False
     ports:
       - "3000:8080"
     volumes:
