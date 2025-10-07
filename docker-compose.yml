@@ -33,29 +33,16 @@ services:
       - seccomp=unconfined
       - apparmor=unconfined
     environment:
-      # Ollama підключення
       - OLLAMA_BASE_URL=http://ollama:11434
       - OLLAMA_API_BASE_URL=http://ollama:11434
-      
-      # КРИТИЧНО: Використовуємо Ollama замість sentence-transformers
       - RAG_EMBEDDING_ENGINE=ollama
       - RAG_EMBEDDING_MODEL=nomic-embed-text
       - ENABLE_RAG_WEB_SEARCH=true
-      
-      # Вимикаємо локальні моделі sentence-transformers
       - RAG_EMBEDDING_MODEL_AUTO_UPDATE=false
-      - RAG_TEMPLATE="Use the following context as your learned knowledge:\n\n[context]\n\nBased on the above context, answer the query.\n\nQuery: [query]"
-      
-      # Whisper - використовуємо легку модель
       - WHISPER_MODEL=base
       - WHISPER_MODEL_AUTO_UPDATE=false
-      
-      # Продуктивність
       - OLLAMA_NUM_PARALLEL=1
       - UVICORN_LOOP=asyncio
-      
-      # Безпека (для dev/test)
-      # - WEBUI_AUTH=False
     ports:
       - "3000:8080"
     volumes:
