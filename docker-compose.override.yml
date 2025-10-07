@@ -1,0 +1,12 @@
+services:
+  open-webui:
+    platform: linux/amd64
+    environment:
+      # Вимикаємо RAG, щоб не завантажувати sentence-transformers
+      - ENABLE_RAG_WEB_SEARCH=false
+      - RAG_EMBEDDING_ENGINE=ollama
+      - RAG_EMBEDDING_MODEL=nomic-embed-text
+      # Використовуємо легку модель Whisper
+      - WHISPER_MODEL=base
+      # Вимикаємо кешування моделей у пам'яті
+      - SENTENCE_TRANSFORMERS_HOME=/tmp
