@@ -55,6 +55,7 @@ python -m controller.bliss_social_automation `
 
    # (необов'язково) Список моделей, які автоматично завантажить ollama-init
    # OLLAMA_AUTO_PULL_MODELS="qwen2.5-coder:1.5b nomic-embed-text"
+   # OLLAMA_HOST=ollama:11434  # змініть, якщо Ollama слухає на іншій адресі
 
    # (необов'язково) BlissOS через ADB
    # BLISS_ADB_ADDRESS=192.168.1.220:5555
@@ -110,7 +111,9 @@ python -m controller.bliss_social_automation `
      потрібних моделей Ollama під час ініціалізації. Щоб пришвидшити старт,
      змініть список моделей у змінній `OLLAMA_AUTO_PULL_MODELS` або залиште її
      порожньою, якщо ви хочете виконати `ollama pull` вручну вже після запуску
-     стеку.
+     стеку. За замовчуванням скрипт `ollama-init` звертається до Ollama на
+     адресі `ollama:11434`; якщо ви перейменували сервіс або прокидаєте порт
+     в іншу мережу, задайте відповідний `OLLAMA_HOST` у `.env`.
    * Контролер Proxmox доступний на порті `8000` (використовується FastAPI).
 
   > **Примітка про нові версії Open WebUI.** Починаючи з гілки `main`

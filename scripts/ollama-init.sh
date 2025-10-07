@@ -9,7 +9,13 @@ if [ -n "${BASH_VERSION:-}" ] || [ -n "${ZSH_VERSION:-}" ] || [ -n "${KSH_VERSIO
   set -o pipefail
 fi
 
-printf '>> Waiting for Ollama API...\n'
+DEFAULT_OLLAMA_HOST="ollama:11434"
+if [ -z "${OLLAMA_HOST:-}" ]; then
+  export OLLAMA_HOST="$DEFAULT_OLLAMA_HOST"
+  printf '>> OLLAMA_HOST not set, defaulting to %s.\n' "$OLLAMA_HOST"
+fi
+
+printf '>> Waiting for Ollama API at %s...\n' "$OLLAMA_HOST"
 until ollama list >/dev/null 2>&1; do
   sleep 1
 done
