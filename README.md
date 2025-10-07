@@ -53,6 +53,9 @@ python -m controller.bliss_social_automation `
    PROXMOX_TOKEN_VALUE=superSecret
    PROXMOX_VERIFY_SSL=False
 
+   # (необов'язково) Список моделей, які автоматично завантажить ollama-init
+   # OLLAMA_AUTO_PULL_MODELS="qwen2.5-coder:1.5b nomic-embed-text"
+
    # (необов'язково) BlissOS через ADB
    # BLISS_ADB_ADDRESS=192.168.1.220:5555
    # або окремо:
@@ -104,7 +107,10 @@ python -m controller.bliss_social_automation `
      Контейнер автоматично стартує лише після того, як `ollama` перейде в стан
      `healthy`, а `ollama-init` завершить завантаження моделей. Це усуває
      ситуацію, коли OpenWebUI миттєво завершується із кодом 0 через відсутність
-     потрібних моделей Ollama під час ініціалізації.
+     потрібних моделей Ollama під час ініціалізації. Щоб пришвидшити старт,
+     змініть список моделей у змінній `OLLAMA_AUTO_PULL_MODELS` або залиште її
+     порожньою, якщо ви хочете виконати `ollama pull` вручну вже після запуску
+     стеку.
    * Контролер Proxmox доступний на порті `8000` (використовується FastAPI).
 
   > **Примітка про нові версії Open WebUI.** Починаючи з гілки `main`
