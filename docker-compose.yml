@@ -43,6 +43,8 @@ services:
     restart: unless-stopped
     depends_on:
       - ollama
+    security_opt:
+      - seccomp=unconfined
     environment:
       - OLLAMA_BASE_URL=http://ollama:11434
       - ENABLE_RAG_LOCAL=true
@@ -59,6 +61,8 @@ services:
       context: .
     container_name: proxmox-controller
     restart: unless-stopped
+    security_opt:
+      - seccomp=unconfined
     environment:
       # Proxmox API
       - PROXMOX_HOST=${PROXMOX_HOST}
