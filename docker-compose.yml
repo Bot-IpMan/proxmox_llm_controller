@@ -45,6 +45,7 @@ services:
       - ollama
     security_opt:
       - seccomp=unconfined
+      - apparmor=unconfined
     environment:
       - OLLAMA_BASE_URL=http://ollama:11434
       - ENABLE_RAG_LOCAL=true
@@ -64,6 +65,7 @@ services:
     restart: unless-stopped
     security_opt:
       - seccomp=unconfined
+      - apparmor=unconfined
     environment:
       # Proxmox API
       - PROXMOX_HOST=${PROXMOX_HOST}

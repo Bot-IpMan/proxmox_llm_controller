@@ -111,7 +111,10 @@ python -m controller.bliss_social_automation `
   > **Проблема з uvloop у LXC.** У деяких шаблонах Proxmox LXC заборонений системний виклик `socketpair`, через що uvicorn
   > з `uvloop` завершується помилкою `PermissionError: [Errno 13] Permission denied`. Базові образи та `docker-compose.yml`
   > у цьому репозиторії вже примушують uvicorn використовувати стандартний asyncio loop (`--loop asyncio` / `UVICORN_LOOP=asyncio`).
-  > Якщо ви оновлюєте існуючі контейнери, обовʼязково перезберіть образ контролера (`docker compose build proxmox-controller`).
+  > Додатково для контейнерів `open-webui` і `proxmox-controller` явно вимкнено обмеження seccomp та AppArmor
+  > (`security_opt: [seccomp=unconfined, apparmor=unconfined]`), щоб дозволити створення `socketpair` в суворо
+  > ізольованих LXC. Якщо ви оновлюєте існуючі контейнери, обовʼязково перезберіть образ контролера
+  > (`docker compose build proxmox-controller`).
 
 ### Увімкнення GPU для Ollama
 
