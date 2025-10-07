@@ -1,8 +1,11 @@
 #!/bin/sh
 set -eu
 
-# Enable pipefail where supported (e.g., bash); ignore errors in POSIX sh.
-if (set -o pipefail >/dev/null 2>&1); then
+# Enable pipefail only when supported by the running shell (e.g., bash, zsh).
+# BusyBox /dash based shells do not recognise the option and would print
+# warnings during container start-up, so gate the call behind a shell-specific
+# variable check.
+if [ -n "${BASH_VERSION:-}" ] || [ -n "${ZSH_VERSION:-}" ] || [ -n "${KSH_VERSION:-}" ]; then
   set -o pipefail
 fi
 
