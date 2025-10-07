@@ -51,6 +51,7 @@ services:
       - OLLAMA_NUM_PARALLEL=1
       # - WEBUI_AUTH=False
       - WHISPER_MODEL=large-v3
+      - UVICORN_LOOP=asyncio
     ports:
       - "3000:8080"
     volumes:
@@ -83,6 +84,7 @@ services:
       - BLISS_ADB_SERIAL=${BLISS_ADB_SERIAL:-}
       - ADB_BINARY=${ADB_BINARY:-}
       - BLISS_OPENAPI_PATH=${BLISS_OPENAPI_PATH:-}
+      - UVICORN_LOOP=asyncio
     volumes:
       - ./keys:/keys:ro
       - ./openapi.json:/app/openapi.json:ro
@@ -91,7 +93,7 @@ services:
       # - ./controller:/app
     # Всі залежності вже встановлені під час збірки образу,
     # тож запускаємо застосунок напряму без повторної установки пакетів
-    command: ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+    command: ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--loop", "asyncio"]
 
     ports:
       - "8000:8000"
