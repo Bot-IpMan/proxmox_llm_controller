@@ -28,13 +28,13 @@ services:
     depends_on:
       ollama:
         condition: service_healthy
-    entrypoint: ["/bin/sh","-lc",
-      "echo '>> Waiting for Ollama API...' && \
-       until ollama list >/dev/null 2>&1; do sleep 1; done && \
-       echo '>> Pull qwen2.5-coder:7b' && ollama pull qwen2.5-coder:7b && \
-       echo '>> Pull nomic-embed-text' && ollama pull nomic-embed-text && \
-       echo '>> Done.'"
-    ]
+    environment:
+      OLLAMA_HOST: "${OLLAMA_HOST:-http://ollama:11434}"
+      OLLAMA_AUTO_PULL_MODELS: "${OLLAMA_AUTO_PULL_MODELS:-qwen2.5-coder:7b nomic-embed-text}"
+    volumes:
+      - ollama:/root/.ollama
+      - ./scripts/ollama-init.sh:/usr/local/bin/ollama-init.sh:ro
+    entrypoint: ["/usr/local/bin/ollama-init.sh"]
     restart: "no"
 
   open-webui:
