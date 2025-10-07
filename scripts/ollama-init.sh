@@ -21,14 +21,47 @@ until ollama list >/dev/null 2>&1; do
 done
 
 models_default="qwen2.5-coder:7b nomic-embed-text"
-models="${OLLAMA_AUTO_PULL_MODELS:-$models_default}"
+models_raw="${OLLAMA_AUTO_PULL_MODELS:-$models_default}"
 
-if [ -z "${models}" ]; then
+# Normalise the list of requested models to support comma/newline separated
+# values, ignore blank/commented lines and remove duplicates while preserving
+# order.  The implementation sticks to POSIX shell features so the script keeps
+# working when executed by BusyBox / dash.
+normalised_models=""
+while IFS= read -r line; do
+  # Drop inline comments (everything after '#') and trim leading/trailing
+  # whitespace by relying on shell word splitting below.
+  line=${line%%#*}
+  # Treat commas as whitespace so values can be provided either as
+  # "model-a,model-b" or "model-a model-b".
+  line=$(printf '%s' "$line" | tr ',' ' ')
+  # ``set --`` performs the trimming and splits the normalised whitespace into
+  # individual tokens.
+  set -- $line
+  for token in "$@"; do
+    [ -z "$token" ] && continue
+    case " $normalised_models " in
+      *" $token "*)
+        # Skip duplicates while keeping the first occurrence.
+        continue
+        ;;
+    esac
+    if [ -z "$normalised_models" ]; then
+      normalised_models=$token
+    else
+      normalised_models="$normalised_models $token"
+    fi
+  done
+done <<EOF
+$models_raw
+EOF
+
+if [ -z "$normalised_models" ]; then
   printf '>> OLLAMA_AUTO_PULL_MODELS is empty, skipping downloads.\n'
   exit 0
 fi
 
-for model in $models; do
+for model in $normalised_models; do
   if ollama show "$model" >/dev/null 2>&1; then
     printf '>> Model %s already present, skipping.\n' "$model"
     continue

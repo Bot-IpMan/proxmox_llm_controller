@@ -53,8 +53,16 @@ python -m controller.bliss_social_automation `
    PROXMOX_TOKEN_VALUE=superSecret
    PROXMOX_VERIFY_SSL=False
 
-   # (необов'язково) Список моделей, які автоматично завантажить ollama-init
+   # (необов'язково) Список моделей, які автоматично завантажить ollama-init.
+   # Можна вказувати через пробіл, кому або у кілька рядків — порожні рядки та
+   # коментарі ігноруються, а дублікати пропускаються:
    # OLLAMA_AUTO_PULL_MODELS="qwen2.5-coder:1.5b nomic-embed-text"
+   # OLLAMA_AUTO_PULL_MODELS="
+   #   qwen2.5-coder:1.5b
+   #   # nomic-embed-text вже є у попередньому рядку, тож буде пропущено
+   #   nomic-embed-text
+   #   llama3.2
+   # "
    # OLLAMA_HOST=ollama:11434  # змініть, якщо Ollama слухає на іншій адресі
 
    # (необов'язково) BlissOS через ADB
