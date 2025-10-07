@@ -1,5 +1,10 @@
 #!/bin/sh
-set -euo pipefail
+set -eu
+
+# Enable pipefail where supported (e.g., bash); ignore errors in POSIX sh.
+if (set -o pipefail >/dev/null 2>&1); then
+  set -o pipefail
+fi
 
 printf '>> Waiting for Ollama API...\n'
 until ollama list >/dev/null 2>&1; do
