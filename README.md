@@ -108,6 +108,11 @@ python -m controller.bliss_social_automation `
   > За замовчуванням у `docker-compose.yml` проброшено саме порт `8000`; якщо ви вручну змінили його на інший (наприклад, `18000`),
   > не забудьте використати нове значення і пересвідчитись, що контейнер `proxmox-controller` запущений (`docker ps`).
 
+  > **Проблема з uvloop у LXC.** У деяких шаблонах Proxmox LXC заборонений системний виклик `socketpair`, через що uvicorn
+  > з `uvloop` завершується помилкою `PermissionError: [Errno 13] Permission denied`. Базові образи та `docker-compose.yml`
+  > у цьому репозиторії вже примушують uvicorn використовувати стандартний asyncio loop (`--loop asyncio` / `UVICORN_LOOP=asyncio`).
+  > Якщо ви оновлюєте існуючі контейнери, обовʼязково перезберіть образ контролера (`docker compose build proxmox-controller`).
+
 ### Увімкнення GPU для Ollama
 
 Базовий `docker-compose.yml` тепер запускає Ollama у CPU-режимі (`OLLAMA_USE_GPU=false`), щоб уникнути помилки типу
