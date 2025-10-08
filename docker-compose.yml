@@ -8,6 +8,7 @@ services:
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64
       - OLLAMA_ORIGINS=*
       # Критично для GPU
       - OLLAMA_GPU_LAYERS=999
@@ -21,12 +22,9 @@ services:
       - OPENBLAS_NUM_THREADS=${OPENBLAS_NUM_THREADS:-4}
       # З оригіналу
       - OLLAMA_USE_GPU=${OLLAMA_USE_GPU:-true}
-      - OLLAMA_PREFERRED_GPU_NAME=${OLLAMA_PREFERRED_GPU_NAME:-}
-    # ВАРІАНТ 1: Якщо скрипт ollama-select-gpu.sh ПОТРІБЕН
-    # entrypoint: ["/usr/local/bin/ollama-select-gpu.sh"]
-    # command: ["serve"]
-    # ВАРІАНТ 2: Стандартний запуск (рекомендую спочатку це)
-    command: serve
+      - OLLAMA_PREFERRED_GPU_NAME=${OLLAMA_PREFERRED_GPU_NAME:-NVIDIA GeForce GTX 1050 Ti}
+    entrypoint: ["/usr/local/bin/ollama-select-gpu.sh"]
+    command: ["serve"]
     healthcheck:
       test: ["CMD", "ollama", "list"]
       interval: 10s
@@ -35,8 +33,8 @@ services:
       start_period: 10s
     volumes:
       - ollama:/root/.ollama
-      # Розкоментуйте якщо потрібен кастомний скрипт
-      # - ./scripts/ollama-select-gpu.sh:/usr/local/bin/ollama-select-gpu.sh:ro
+      - ./scripts/ollama-select-gpu.sh:/usr/local/bin/ollama-select-gpu.sh:ro
+    runtime: nvidia
     deploy:
       resources:
         reservations:
