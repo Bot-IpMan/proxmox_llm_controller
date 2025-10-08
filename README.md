@@ -145,23 +145,16 @@ python -m controller.bliss_social_automation `
 
 ### Увімкнення GPU для Ollama
 
-Базовий `docker-compose.yml` тепер запускає Ollama у CPU-режимі (`OLLAMA_USE_GPU=false`), щоб уникнути помилки типу
-`could not select device driver "nvidia" with capabilities: [[gpu]]` на хостах без відеокарти.
+Базовий `docker-compose.yml` тепер одразу налаштований на використання NVIDIA GPU: для сервісів `ollama` та
+`proxmox-controller` додаються змінні середовища `NVIDIA_VISIBLE_DEVICES`, `NVIDIA_DRIVER_CAPABILITIES`,
+вимога одного GPU через `deploy.resources.reservations.devices`, а також стартовий скрипт
+[`scripts/ollama-select-gpu.sh`](scripts/ollama-select-gpu.sh), який автоматично вибирає бажаний адаптер (типово
+`NVIDIA GeForce GTX 1050 Ti`, змінюється через `OLLAMA_PREFERRED_GPU_NAME`). Якщо потрібно повністю вимкнути GPU,
+встановіть `OLLAMA_USE_GPU=false` або задайте `NVIDIA_VISIBLE_DEVICES=` у `.env`.
 
-Якщо у вас є сумісний GPU, додайте файл `docker-compose.gpu.yml` при запуску:
+Файл `docker-compose.gpu.yml` залишається сумісним — він дублює ці параметри й може використовуватися для ручного
+override в існуючих деплойментах, але для нових запусків достатньо стандартного `docker compose up -d`.
 
-```sh
-docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
-```
-
-Override-файл прокидає необхідні змінні середовища (`NVIDIA_VISIBLE_DEVICES`, `NVIDIA_DRIVER_CAPABILITIES`, `OLLAMA_USE_GPU=true`),
-монтує скрипт `scripts/ollama-select-gpu.sh` і просить один GPU через `deploy.resources.reservations.devices`.
-Скрипт під час старту контейнера намагається знайти адаптер із назвою
-`NVIDIA GeForce GTX 1050 Ti` і, якщо користувач не вказав власні значення `NVIDIA_VISIBLE_DEVICES`/`CUDA_VISIBLE_DEVICES`,
-обмежує контейнер саме цим GPU. За потреби можна змінити модель через змінну `OLLAMA_PREFERRED_GPU_NAME`.
-
-Той самий override передає GPU також сервісу `proxmox-controller`, щоб локальний генератор
-Hugging Face (`BLISS_LLM_PROVIDER=huggingface`) міг використовувати CUDA всередині контейнера.
 Переконайтесь у таких пунктах:
 
 1. На хості встановлено драйвер NVIDIA та [`nvidia-container-toolkit`](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
