@@ -3,12 +3,13 @@ services:
     image: ollama/ollama:latest
     container_name: ollama
     restart: unless-stopped
-    runtime: "nvidia"
+    gpus: all
     ports:
       - "11434:11434"
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - OLLAMA_ORIGINS=*
       - OLLAMA_USE_GPU=${OLLAMA_USE_GPU:-true}
       - OLLAMA_PREFERRED_GPU_NAME=${OLLAMA_PREFERRED_GPU_NAME:-}
       - OLLAMA_KEEP_ALIVE=30s
@@ -69,13 +70,12 @@ services:
         INSTALL_GPU_EXTRAS: ${INSTALL_GPU_EXTRAS:-false}
     container_name: proxmox-controller
     restart: unless-stopped
-    runtime: "nvidia"
+    depends_on: [ollama]
     security_opt:
       - seccomp=unconfined
       - apparmor=unconfined
     environment:
-      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - OLLAMA_BASE_URL=http://ollama:11434
       - PROXMOX_HOST=${PROXMOX_HOST}
       - PROXMOX_PORT=${PROXMOX_PORT:-8006}
       - PROXMOX_USER=${PROXMOX_USER}
@@ -106,13 +106,6 @@ services:
       timeout: 5s
       retries: 20
       start_period: 10s
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: ${NVIDIA_GPU_COUNT:-1}
-              capabilities: [gpu]
 
 volumes:
   ollama:
