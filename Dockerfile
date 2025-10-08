@@ -36,13 +36,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
 # 2) Python-залежності
-COPY controller/requirements.txt .
+COPY controller/requirements.txt controller/requirements.gpu.txt ./
 # ``flash-attn`` виконує ``setup.py`` вже на етапі збирання метаданих, що
 # вимагає наявності бібліотеки ``packaging`` у середовищі ще до встановлення
 # залежностей з ``requirements.txt``. У базовому образі її немає, тому
 # встановлюємо її (разом із актуальним ``pip``/``setuptools``) окремо.
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel packaging
-RUN pip install --no-cache-dir -r requirements.txt
+ARG INSTALL_GPU_EXTRAS=false
+RUN pip install --no-cache-dir -r requirements.txt \
+ && if [ "$INSTALL_GPU_EXTRAS" = "true" ]; then \
+      pip install --no-cache-dir -r requirements.gpu.txt; \
+    fi
 
 # 3) Код
 COPY controller/ .

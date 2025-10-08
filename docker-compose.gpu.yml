@@ -18,6 +18,9 @@ services:
               capabilities: [gpu]
 
   proxmox-controller:
+    build:
+      args:
+        INSTALL_GPU_EXTRAS: ${INSTALL_GPU_EXTRAS:-true}
     environment:
       - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES-}
       - NVIDIA_DRIVER_CAPABILITIES=${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}

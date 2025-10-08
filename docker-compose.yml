@@ -65,6 +65,8 @@ services:
   proxmox-controller:
     build:
       context: .
+      args:
+        INSTALL_GPU_EXTRAS: ${INSTALL_GPU_EXTRAS:-false}
     container_name: proxmox-controller
     restart: unless-stopped
     runtime: nvidia

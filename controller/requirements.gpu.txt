@@ -1,0 +1,4 @@
+# Optional GPU-accelerated dependencies.
+# Install together with an appropriate PyTorch build when running the controller on a CUDA host.
+bitsandbytes>=0.43.0
+flash-attn>=2.5.6
