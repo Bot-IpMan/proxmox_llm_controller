@@ -154,8 +154,12 @@ python -m controller.bliss_social_automation `
 docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 ```
 
-Override-файл прокидає необхідні змінні середовища (`NVIDIA_VISIBLE_DEVICES`, `NVIDIA_DRIVER_CAPABILITIES`, `OLLAMA_USE_GPU=true`)
-та просить один GPU через `deploy.resources.reservations.devices`. Переконайтесь у таких пунктах:
+Override-файл прокидає необхідні змінні середовища (`NVIDIA_VISIBLE_DEVICES`, `NVIDIA_DRIVER_CAPABILITIES`, `OLLAMA_USE_GPU=true`),
+монтує скрипт `scripts/ollama-select-gpu.sh` і просить один GPU через `deploy.resources.reservations.devices`.
+Скрипт під час старту контейнера намагається знайти адаптер із назвою
+`NVIDIA GeForce GTX 1050 Ti` і, якщо користувач не вказав власні значення `NVIDIA_VISIBLE_DEVICES`/`CUDA_VISIBLE_DEVICES`,
+обмежує контейнер саме цим GPU. За потреби можна змінити модель через змінну `OLLAMA_PREFERRED_GPU_NAME`.
+Переконайтесь у таких пунктах:
 
 1. На хості встановлено драйвер NVIDIA та [`nvidia-container-toolkit`](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
    Перевірте, що GPU бачиться системою: `nvidia-smi`.
