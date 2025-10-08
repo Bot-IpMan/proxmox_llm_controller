@@ -261,6 +261,115 @@ def test_content_generator_huggingface(monkeypatch):
     assert captured["params"]["max_new_tokens"] == 64
 
 
+def test_content_generator_huggingface_auto_detects_gpu(monkeypatch):
+    captured = {}
+
+    def fake_pipeline(task, model=None, **kwargs):
+        captured.update({"task": task, "model": model, "kwargs": kwargs})
+
+        def runner(prompt, **_params):
+            return [{"generated_text": "GPU"}]
+
+        return runner
+
+    class FakeCuda:
+        @staticmethod
+        def is_available():
+            return True
+
+        @staticmethod
+        def device_count():
+            return 1
+
+    monkeypatch.setitem(sys.modules, "torch", SimpleNamespace(cuda=FakeCuda()))
+    monkeypatch.setitem(sys.modules, "transformers", SimpleNamespace(pipeline=fake_pipeline))
+    monkeypatch.delenv("BLISS_HF_DEVICE", raising=False)
+
+    generator = ContentGenerator(provider="huggingface", model="gpt2")
+    assert captured["kwargs"].get("device") == "cuda:0"
+    assert generator.generate("Hi") == "GPU"
+
+
+def test_content_generator_huggingface_respects_device_env(monkeypatch):
+    captured = {}
+
+    def fake_pipeline(task, model=None, **kwargs):
+        captured["kwargs"] = kwargs
+
+        def runner(prompt, **_params):
+            return [{"generated_text": "Manual"}]
+
+        return runner
+
+    class FakeCuda:
+        @staticmethod
+        def is_available():
+            return True
+
+        @staticmethod
+        def device_count():
+            return 2
+
+    monkeypatch.setitem(sys.modules, "torch", SimpleNamespace(cuda=FakeCuda()))
+    monkeypatch.setitem(sys.modules, "transformers", SimpleNamespace(pipeline=fake_pipeline))
+    monkeypatch.setenv("BLISS_HF_DEVICE", "cuda:1")
+
+    generator = ContentGenerator(provider="huggingface", model="gpt2")
+    assert captured["kwargs"].get("device") == "cuda:1"
+    assert generator.generate("Hi") == "Manual"
+
+
+def test_content_generator_huggingface_device_auto_map(monkeypatch):
+    captured = {}
+
+    def fake_pipeline(task, model=None, **kwargs):
+        captured["kwargs"] = kwargs
+
+        def runner(prompt, **_params):
+            return [{"generated_text": "AutoMap"}]
+
+        return runner
+
+    class FakeCuda:
+        @staticmethod
+        def is_available():
+            return True
+
+        @staticmethod
+        def device_count():
+            return 1
+
+    monkeypatch.setitem(sys.modules, "torch", SimpleNamespace(cuda=FakeCuda()))
+    monkeypatch.setitem(sys.modules, "transformers", SimpleNamespace(pipeline=fake_pipeline))
+    monkeypatch.setenv("BLISS_HF_DEVICE", "auto")
+
+    generator = ContentGenerator(provider="huggingface", model="gpt2")
+    assert captured["kwargs"].get("device_map") == "auto"
+    assert "device" not in captured["kwargs"]
+    assert generator.generate("Hi") == "AutoMap"
+
+
+def test_content_generator_huggingface_cuda_without_gpu(monkeypatch):
+    def fake_pipeline(*_args, **_kwargs):  # pragma: no cover - should not be invoked
+        raise AssertionError("pipeline should not be called when CUDA is unavailable")
+
+    class FakeCuda:
+        @staticmethod
+        def is_available():
+            return False
+
+        @staticmethod
+        def device_count():
+            return 0
+
+    monkeypatch.setitem(sys.modules, "torch", SimpleNamespace(cuda=FakeCuda()))
+    monkeypatch.setitem(sys.modules, "transformers", SimpleNamespace(pipeline=fake_pipeline))
+    monkeypatch.setenv("BLISS_HF_DEVICE", "cuda")
+
+    with pytest.raises(ContentGeneratorError):
+        ContentGenerator(provider="huggingface", model="gpt2")
+
+
 def test_content_generator_missing_key(monkeypatch):
     monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(ChatCompletion=SimpleNamespace(create=lambda **_: None), api_key=None))
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
