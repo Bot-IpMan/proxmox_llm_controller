@@ -155,6 +155,21 @@ python -m controller.bliss_social_automation `
 Файл `docker-compose.gpu.yml` залишається сумісним — він дублює ці параметри й може використовуватися для ручного
 override в існуючих деплойментах, але для нових запусків достатньо стандартного `docker compose up -d`.
 
+#### Додаткові Python-залежності контролера для CUDA
+
+Образ `proxmox-controller` за замовчуванням встановлює лише базові бібліотеки з `controller/requirements.txt`,
+щоб без проблем збиратися на хостах без GPU. Якщо потрібно використати бібліотеки на кшталт
+`bitsandbytes` або `flash-attn`, передайте аргумент збірки `INSTALL_GPU_EXTRAS=true`:
+
+```sh
+docker compose build proxmox-controller --build-arg INSTALL_GPU_EXTRAS=true
+```
+
+Під час такої збірки додатково встановлюються залежності з файлу
+[`controller/requirements.gpu.txt`](controller/requirements.gpu.txt). Не забудьте вказати сумісну збірку PyTorch
+для вашої версії CUDA (наприклад, через додатковий `pip install torch==... --index-url ...` у власному Dockerfile
+або після старту контейнера), інакше `flash-attn` не зможе зібратися.
+
 Переконайтесь у таких пунктах:
 
 1. На хості встановлено драйвер NVIDIA та [`nvidia-container-toolkit`](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
