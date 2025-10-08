@@ -48,7 +48,10 @@ try:  # pragma: no cover - exercised when optional dependencies are installed
     from proxmoxer.core import ResourceException
 except ModuleNotFoundError:  # pragma: no cover - unit tests use lightweight fallback
     from ._proxmoxer_fallback import ProxmoxAPI, ResourceException  # type: ignore
-import paramiko
+try:  # pragma: no cover - exercised when optional dependencies are installed
+    import paramiko
+except ModuleNotFoundError:  # pragma: no cover - unit tests use lightweight fallback
+    from ._paramiko_fallback import paramiko  # type: ignore
 import requests
 
 # NOTE:
