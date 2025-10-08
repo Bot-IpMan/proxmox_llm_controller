@@ -206,7 +206,11 @@ def _build_hf_device_kwargs(device_setting: Optional[Union[str, int]]) -> Dict[s
     if device_setting is None:
         torch = _import_optional_torch()
         if torch is not None and torch.cuda.is_available():
-            kwargs["device"] = "cuda:0"
+            # ``transformers.pipeline`` expects CUDA devices to be provided as
+            # integer indices.  Using ``0`` instead of ``"cuda:0"`` ensures the
+            # model is actually moved onto the GPU rather than remaining on the
+            # CPU.
+            kwargs["device"] = 0
         return kwargs
 
     if isinstance(device_setting, int):
@@ -236,7 +240,7 @@ def _build_hf_device_kwargs(device_setting: Optional[Union[str, int]]) -> Dict[s
             raise ContentGeneratorError("PyTorch is required to use CUDA devices")
         if not torch.cuda.is_available():
             raise ContentGeneratorError("CUDA device requested but no GPU is available")
-        kwargs["device"] = "cuda:0"
+        kwargs["device"] = 0
         return kwargs
 
     if lowered.startswith("cuda:") or lowered.startswith("gpu:"):
@@ -256,7 +260,8 @@ def _build_hf_device_kwargs(device_setting: Optional[Union[str, int]]) -> Dict[s
             raise ContentGeneratorError(
                 f"CUDA device index {parsed_index} is out of range (available: {torch.cuda.device_count()})"
             )
-        kwargs["device"] = f"cuda:{parsed_index}"
+        # ``transformers.pipeline`` accepts GPU identifiers as integers.
+        kwargs["device"] = parsed_index
         return kwargs
 
     try:

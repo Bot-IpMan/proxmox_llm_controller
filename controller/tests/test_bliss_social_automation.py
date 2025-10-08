@@ -286,7 +286,7 @@ def test_content_generator_huggingface_auto_detects_gpu(monkeypatch):
     monkeypatch.delenv("BLISS_HF_DEVICE", raising=False)
 
     generator = ContentGenerator(provider="huggingface", model="gpt2")
-    assert captured["kwargs"].get("device") == "cuda:0"
+    assert captured["kwargs"].get("device") == 0
     assert generator.generate("Hi") == "GPU"
 
 
@@ -315,7 +315,7 @@ def test_content_generator_huggingface_respects_device_env(monkeypatch):
     monkeypatch.setenv("BLISS_HF_DEVICE", "cuda:1")
 
     generator = ContentGenerator(provider="huggingface", model="gpt2")
-    assert captured["kwargs"].get("device") == "cuda:1"
+    assert captured["kwargs"].get("device") == 1
     assert generator.generate("Hi") == "Manual"
 
 
