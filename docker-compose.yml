@@ -6,12 +6,17 @@ services:
     ports:
       - "11434:11434"
     environment:
-      - OLLAMA_USE_GPU=${OLLAMA_USE_GPU:-false}
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES-}
+      - NVIDIA_DRIVER_CAPABILITIES=${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}
+      - OLLAMA_USE_GPU=${OLLAMA_USE_GPU:-true}
+      - OLLAMA_PREFERRED_GPU_NAME=${OLLAMA_PREFERRED_GPU_NAME:-NVIDIA GeForce GTX 1050 Ti}
       - OLLAMA_KEEP_ALIVE=30s
       - OLLAMA_NUM_THREADS=4
       - OLLAMA_NUM_PARALLEL=1
       - OMP_NUM_THREADS=4
       - OPENBLAS_NUM_THREADS=4
+    entrypoint: ["/usr/local/bin/ollama-select-gpu.sh"]
+    command: ["serve"]
     healthcheck:
       test: ["CMD", "ollama", "list"]
       interval: 10s
@@ -19,7 +24,15 @@ services:
       retries: 30
       start_period: 10s
     volumes:
+      - ./scripts/ollama-select-gpu.sh:/usr/local/bin/ollama-select-gpu.sh:ro
       - ollama:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: ${NVIDIA_GPU_COUNT:-1}
+              capabilities: [gpu]
 
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
@@ -57,6 +70,8 @@ services:
       - seccomp=unconfined
       - apparmor=unconfined
     environment:
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES-}
+      - NVIDIA_DRIVER_CAPABILITIES=${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}
       - PROXMOX_HOST=${PROXMOX_HOST}
       - PROXMOX_PORT=${PROXMOX_PORT:-8006}
       - PROXMOX_USER=${PROXMOX_USER}
@@ -87,6 +102,13 @@ services:
       timeout: 5s
       retries: 20
       start_period: 10s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: ${NVIDIA_GPU_COUNT:-1}
+              capabilities: [gpu]
 
 volumes:
   ollama:
