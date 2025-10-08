@@ -1,9 +1,14 @@
 services:
   ollama:
     environment:
-      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-all}
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES-}
       - NVIDIA_DRIVER_CAPABILITIES=${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}
       - OLLAMA_USE_GPU=${OLLAMA_USE_GPU:-true}
+      - OLLAMA_PREFERRED_GPU_NAME=${OLLAMA_PREFERRED_GPU_NAME:-NVIDIA GeForce GTX 1050 Ti}
+    entrypoint: ["/usr/local/bin/ollama-select-gpu.sh"]
+    command: ["serve"]
+    volumes:
+      - ./scripts/ollama-select-gpu.sh:/usr/local/bin/ollama-select-gpu.sh:ro
     deploy:
       resources:
         reservations:
