@@ -336,6 +336,27 @@ class ContentGenerator:
         self.model = model
         device_setting: Optional[Union[str, int]] = self.device or os.getenv("BLISS_HF_DEVICE")
         pipeline_kwargs = _build_hf_device_kwargs(device_setting)
+
+        torch = _import_optional_torch()
+        hf_gpu_kwargs: Dict[str, Any] = {}
+        if torch is not None:
+            hf_gpu_kwargs["device_map"] = "auto"
+            hf_gpu_kwargs["torch_dtype"] = torch.float16
+
+        if "gemma3:4b" in model.lower():
+            try:
+                from transformers import BitsAndBytesConfig  # type: ignore[import-not-found]
+            except ImportError:
+                BitsAndBytesConfig = None  # type: ignore[assignment]
+            else:
+                if torch is not None:
+                    hf_gpu_kwargs["quantization_config"] = BitsAndBytesConfig(
+                        load_in_4bit=True,
+                        bnb_4bit_compute_dtype=torch.float16,
+                    )
+                    hf_gpu_kwargs["torch_dtype"] = torch.float16
+
+        pipeline_kwargs.update(hf_gpu_kwargs)
         self._hf_pipeline = pipeline("text-generation", model=model, **pipeline_kwargs)
 
     # ──────────────────────────────────────────────────────────────────

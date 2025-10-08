@@ -3,13 +3,14 @@ services:
     image: ollama/ollama:latest
     container_name: ollama
     restart: unless-stopped
+    runtime: nvidia
     ports:
       - "11434:11434"
     environment:
-      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES-}
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-all}
       - NVIDIA_DRIVER_CAPABILITIES=${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}
       - OLLAMA_USE_GPU=${OLLAMA_USE_GPU:-true}
-      - OLLAMA_PREFERRED_GPU_NAME=${OLLAMA_PREFERRED_GPU_NAME:-NVIDIA GeForce GTX 1050 Ti}
+      - OLLAMA_PREFERRED_GPU_NAME=${OLLAMA_PREFERRED_GPU_NAME:-}
       - OLLAMA_KEEP_ALIVE=30s
       - OLLAMA_NUM_THREADS=4
       - OLLAMA_NUM_PARALLEL=1
@@ -66,11 +67,12 @@ services:
       context: .
     container_name: proxmox-controller
     restart: unless-stopped
+    runtime: nvidia
     security_opt:
       - seccomp=unconfined
       - apparmor=unconfined
     environment:
-      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES-}
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-all}
       - NVIDIA_DRIVER_CAPABILITIES=${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}
       - PROXMOX_HOST=${PROXMOX_HOST}
       - PROXMOX_PORT=${PROXMOX_PORT:-8006}
