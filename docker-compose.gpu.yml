@@ -16,3 +16,15 @@ services:
             - driver: nvidia
               count: ${NVIDIA_GPU_COUNT:-1}
               capabilities: [gpu]
+
+  proxmox-controller:
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES-}
+      - NVIDIA_DRIVER_CAPABILITIES=${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: ${NVIDIA_GPU_COUNT:-1}
+              capabilities: [gpu]

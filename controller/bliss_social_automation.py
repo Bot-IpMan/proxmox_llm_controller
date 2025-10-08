@@ -27,7 +27,7 @@ import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Optional, Sequence, Tuple, Union
 
 logger = logging.getLogger(__name__)
 
@@ -169,6 +169,103 @@ def _read_env_int(name: str) -> Optional[int]:
         raise ContentGeneratorError(f"Environment variable {name} must be an integer") from exc
 
 
+def _import_optional_torch() -> Optional["torch"]:
+    """Import :mod:`torch` only when available.
+
+    The Hugging Face integration is optional, therefore we cannot require
+    PyTorch at import time.  This helper centralises the lazy import and
+    returns ``None`` when the dependency is not present.
+    """
+
+    try:  # pragma: no cover - absence of torch is covered elsewhere
+        import torch  # type: ignore[import-not-found]
+    except ImportError:  # pragma: no cover - optional dependency
+        return None
+    return torch
+
+
+def _build_hf_device_kwargs(device_setting: Optional[Union[str, int]]) -> Dict[str, Any]:
+    """Normalise Hugging Face device configuration.
+
+    Parameters
+    ----------
+    device_setting:
+        Either a string/integer provided via :class:`ContentGenerator` or the
+        ``BLISS_HF_DEVICE`` environment variable.  Supported values include
+        ``"cpu"``, ``"cuda"``, ``"cuda:1"``, ``"auto"`` (to delegate device
+        placement to ``device_map="auto"``) or a raw integer.
+
+    Returns
+    -------
+    dict
+        Keyword arguments that should be forwarded to
+        :func:`transformers.pipeline`.
+    """
+
+    kwargs: Dict[str, Any] = {}
+    if device_setting is None:
+        torch = _import_optional_torch()
+        if torch is not None and torch.cuda.is_available():
+            kwargs["device"] = "cuda:0"
+        return kwargs
+
+    if isinstance(device_setting, int):
+        kwargs["device"] = device_setting
+        return kwargs
+
+    if not isinstance(device_setting, str):
+        kwargs["device"] = device_setting
+        return kwargs
+
+    value = device_setting.strip()
+    if not value:
+        return kwargs
+
+    lowered = value.lower()
+    if lowered in {"auto", "device_map=auto", "device_map:auto"}:
+        kwargs["device_map"] = "auto"
+        return kwargs
+
+    if lowered in {"cpu", "mps"}:
+        kwargs["device"] = lowered
+        return kwargs
+
+    if lowered in {"cuda", "gpu"}:
+        torch = _import_optional_torch()
+        if torch is None:
+            raise ContentGeneratorError("PyTorch is required to use CUDA devices")
+        if not torch.cuda.is_available():
+            raise ContentGeneratorError("CUDA device requested but no GPU is available")
+        kwargs["device"] = "cuda:0"
+        return kwargs
+
+    if lowered.startswith("cuda:") or lowered.startswith("gpu:"):
+        index_part = lowered.split(":", 1)[1]
+        index = 0 if index_part == "" else index_part
+        try:
+            parsed_index = int(index)
+        except ValueError as exc:
+            raise ContentGeneratorError(f"Invalid CUDA device index '{device_setting}'") from exc
+
+        torch = _import_optional_torch()
+        if torch is None:
+            raise ContentGeneratorError("PyTorch is required to use CUDA devices")
+        if not torch.cuda.is_available():
+            raise ContentGeneratorError("CUDA device requested but no GPU is available")
+        if parsed_index < 0 or parsed_index >= torch.cuda.device_count():
+            raise ContentGeneratorError(
+                f"CUDA device index {parsed_index} is out of range (available: {torch.cuda.device_count()})"
+            )
+        kwargs["device"] = f"cuda:{parsed_index}"
+        return kwargs
+
+    try:
+        kwargs["device"] = int(value)
+        return kwargs
+    except ValueError as exc:
+        raise ContentGeneratorError(f"Unrecognised Hugging Face device '{device_setting}'") from exc
+
+
 @dataclass
 class ContentGenerator:
     """Utility wrapper around OpenAI or Hugging Face text generation."""
@@ -232,10 +329,8 @@ class ContentGenerator:
 
         model = self.model or self.huggingface_model or os.getenv("BLISS_HF_MODEL") or "gpt2"
         self.model = model
-        pipeline_kwargs: Dict[str, Any] = {}
-        device = self.device or os.getenv("BLISS_HF_DEVICE")
-        if device:
-            pipeline_kwargs["device"] = device
+        device_setting: Optional[Union[str, int]] = self.device or os.getenv("BLISS_HF_DEVICE")
+        pipeline_kwargs = _build_hf_device_kwargs(device_setting)
         self._hf_pipeline = pipeline("text-generation", model=model, **pipeline_kwargs)
 
     # ──────────────────────────────────────────────────────────────────
