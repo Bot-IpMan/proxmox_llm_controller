@@ -3,75 +3,46 @@ services:
     image: ollama/ollama:0.12.3
     container_name: ollama
     restart: unless-stopped
+    ports:
+      - "11434:11434"
 
     # ✅ Простий і сумісний спосіб дати контейнеру доступ до GPU
     gpus: all   # еквівалент docker run --gpus all
 
-    # альтернатива/дублер для старіших середовищ Compose (можеш залишити обидва)
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-              
     environment:
       # Примусово вибираємо CUDA-бібліотеку Ollama (динамічна "cuda_v11")
-      - OLLAMA_LLM_LIBRARY=cuda    # див. список доступних бібліотек
+      - OLLAMA_LLM_LIBRARY=cuda_v11    # див. список доступних бібліотек
       # Pascal — без FlashAttention
-      - OLLAMA_FLASH_ATTENTION=0
+      - OLLAMA_FLASH_ATTENTION=false
       # Не обмежуємо VRAM штучно (видаляємо ОLLAMA_MAX_VRAM)
       # - OLLAMA_MAX_VRAM=0   # (НЕ ставимо; за замовчуванням необмежено)
       - OLLAMA_KEEP_ALIVE=10m
       - OLLAMA_NUM_PARALLEL=1
       - OLLAMA_MAX_QUEUE=512
-      - OLLAMA_KV_CACHE_TYPE=f16
+
       # Коректні змінні для runtime NVIDIA
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
-      - OLLAMA_KEEP_ALIVE=10m
 
       # Для WSL2 корисно, щоб libcuda з /usr/lib/wsl/lib точно потрапила в пошук
       - LD_LIBRARY_PATH=/usr/lib/wsl/lib:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu
 
-    ports:
-      - "11434:11434"
-      
     healthcheck:
-      test: ["CMD", "ollama", "list"]
+      test: ["CMD", "bash", "-lc", "curl -fsS http://127.0.0.1:11434/api/tags >/dev/null"]
       interval: 10s
       timeout: 5s
       retries: 30
       start_period: 10s
 
-    volumes:
-      - ollama:/root/.ollama
-
-  open-webui:
-    image: ghcr.io/open-webui/open-webui:main
-    container_name: open-webui
-    restart: unless-stopped
-    depends_on:
-      ollama:
-        condition: service_healthy
-    environment:
-      - OLLAMA_BASE_URL=http://ollama:11434
-      - OLLAMA_API_BASE_URL=http://ollama:11434
-      - RAG_EMBEDDING_ENGINE=ollama
-      - RAG_EMBEDDING_MODEL=nomic-embed-text
-      - ENABLE_RAG_WEB_SEARCH=true
-      - RAG_EMBEDDING_MODEL_AUTO_UPDATE=false
-      - WHISPER_MODEL=base
-      - WHISPER_MODEL_AUTO_UPDATE=false
-      - UVICORN_LOOP=asyncio
-    ports:
-      - "3000:8080"
+    # Трохи послаблюємо профілі безпеки — інколи це потрібно під WSL/старі драйвери
     security_opt:
       - seccomp=unconfined
       - apparmor=unconfined
+    privileged: true
+
     volumes:
-      - openwebui:/app/backend/data
+      - ollama:/root/.ollama
+
 
   proxmox-controller:
     build:
