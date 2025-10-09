@@ -1,3 +1,7 @@
+# docker-compose.yml
+# Compose v2, ключ "version" не потрібен (він застарілий у нових версіях)
+name: proxmox_llm_controller
+
 services:
   ollama:
     image: ollama/ollama:0.12.3
@@ -5,44 +9,60 @@ services:
     restart: unless-stopped
     ports:
       - "11434:11434"
-
-    # ✅ Простий і сумісний спосіб дати контейнеру доступ до GPU
-    gpus: all   # еквівалент docker run --gpus all
-
     environment:
-      # Примусово вибираємо CUDA-бібліотеку Ollama (динамічна "cuda_v11")
-      - OLLAMA_LLM_LIBRARY=cuda_v11    # див. список доступних бібліотек
-      # Pascal — без FlashAttention
-      - OLLAMA_FLASH_ATTENTION=false
-      # Не обмежуємо VRAM штучно (видаляємо ОLLAMA_MAX_VRAM)
-      # - OLLAMA_MAX_VRAM=0   # (НЕ ставимо; за замовчуванням необмежено)
+      # Дозволяємо доступ з Open WebUI та локальної мережі
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_ORIGINS=*,http://localhost,https://localhost,http://127.0.0.1,https://127.0.0.1
+      # Примусово обираємо CUDA backend (за потреби)
+      - OLLAMA_LLM_LIBRARY=cuda
+      # Трохи обмежимо паралелізм на 4ГіБ VRAM (зайві великі значення тільки шкодять)
+      - OLLAMA_NUM_PARALLEL=2
+      - OLLAMA_CONTEXT_LENGTH=4096
+      - OLLAMA_KV_CACHE_TYPE=f16
       - OLLAMA_KEEP_ALIVE=10m
-      - OLLAMA_NUM_PARALLEL=1
-      - OLLAMA_MAX_QUEUE=512
-
-      # Коректні змінні для runtime NVIDIA
-      - NVIDIA_VISIBLE_DEVICES=all
+      # Не чіпаємо LD_LIBRARY_PATH — його виставить NVIDIA toolkit
+      # Для явності можна лишити видимим саме цей GPU:
+      - NVIDIA_VISIBLE_DEVICES=0
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
-
-      # Для WSL2 корисно, щоб libcuda з /usr/lib/wsl/lib точно потрапила в пошук
-      - LD_LIBRARY_PATH=/usr/lib/wsl/lib:/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu
-
+    volumes:
+      - ollama:/root/.ollama
     healthcheck:
-      test: ["CMD", "bash", "-lc", "curl -fsS http://127.0.0.1:11434/api/tags >/dev/null"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:11434/api/tags"]
       interval: 10s
       timeout: 5s
       retries: 30
       start_period: 10s
+    # Правильний спосіб дати контейнеру GPU у Compose (див. офіційні доки)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1              # або 'all'
+              capabilities: [gpu]
 
-    # Трохи послаблюємо профілі безпеки — інколи це потрібно під WSL/старі драйвери
-    security_opt:
-      - seccomp=unconfined
-      - apparmor=unconfined
-    privileged: true
-
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    restart: unless-stopped
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_API_BASE_URL=http://ollama:11434
+      - RAG_EMBEDDING_ENGINE=ollama
+      - RAG_EMBEDDING_MODEL=nomic-embed-text
+      - ENABLE_RAG_WEB_SEARCH=true
+      - RAG_EMBEDDING_MODEL_AUTO_UPDATE=false
+      - WHISPER_MODEL=base
+      - WHISPER_MODEL_AUTO_UPDATE=false
+      - OLLAMA_NUM_PARALLEL=1
+      - UVICORN_LOOP=asyncio
+    ports:
+      - "3000:8080"
     volumes:
-      - ollama:/root/.ollama
-
+      - openwebui:/app/backend/data
 
   proxmox-controller:
     build:
@@ -52,8 +72,7 @@ services:
     container_name: proxmox-controller
     restart: unless-stopped
     depends_on:
-      ollama:
-        condition: service_healthy
+      - ollama
     environment:
       - OLLAMA_BASE_URL=http://ollama:11434
       - PROXMOX_HOST=${PROXMOX_HOST}
@@ -66,29 +85,35 @@ services:
       - PVE_SSH_HOST=${PVE_SSH_HOST}
       - PVE_SSH_USER=${PVE_SSH_USER:-root}
       - PVE_SSH_KEY_PATH=/keys/pve_id_rsa
-      - BLISS_ADB_ADDRESS=${BLISS_ADB_ADDRESS:-}
-      - BLISS_ADB_HOST=${BLISS_ADB_HOST:-}
-      - BLISS_ADB_PORT=${BLISS_ADB_PORT:-5555}
-      - BLISS_ADB_SERIAL=${BLISS_ADB_SERIAL:-}
-      - ADB_BINARY=${ADB_BINARY:-}
-      - BLISS_OPENAPI_PATH=${BLISS_OPENAPI_PATH:-}
       - UVICORN_LOOP=asyncio
-    command: ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--loop", "asyncio"]
-    ports:
-      - "8000:8000"
     security_opt:
       - seccomp=unconfined
       - apparmor=unconfined
-    volumes:
-      - ./keys:/keys:ro
-      - ./openapi.json:/app/openapi.json:ro
-      - ./openapi_bliss.json:/app/openapi_bliss.json:ro
+    command: ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--loop", "asyncio"]
+    ports:
+      - "8000:8000"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8000/health"]
       interval: 10s
       timeout: 5s
-      retries: 20
+      retries: 30
       start_period: 10s
+    volumes:
+      - ./keys:/keys:ro
+      - ./openapi.json:/app/openapi.json:ro
+      - ./openapi_bliss.json:/app/openapi_bliss.json:ro
+
+  # Додатковий сервіс для швидкої перевірки GPU через Compose
+  gpu-test:
+    image: nvidia/cuda:12.9.0-base-ubuntu22.04
+    command: ["bash", "-lc", "nvidia-smi && ls -l /dev/nvidia* || true"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 
 volumes:
   ollama:
