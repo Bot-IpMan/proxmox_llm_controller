@@ -38,12 +38,11 @@ services:
       - ollama:/root/.ollama
 
     healthcheck:
-      test: ["CMD", "bash", "-lc", "curl -fsS http://127.0.0.1:11434/api/tags >/dev/null"]
+      test: ["CMD", "bash", "-lc", "ollama list >/dev/null 2>&1 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 30
       start_period: 10s
-
 
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
