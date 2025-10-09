@@ -1,45 +1,49 @@
-# docker-compose.yml
-# Compose v2, ключ "version" не потрібен (він застарілий у нових версіях)
-name: proxmox_llm_controller
-
 services:
   ollama:
     image: ollama/ollama:0.12.3
     container_name: ollama
     restart: unless-stopped
-    ports:
-      - "11434:11434"
-    environment:
-      # Дозволяємо доступ з Open WebUI та локальної мережі
-      - OLLAMA_HOST=0.0.0.0
-      - OLLAMA_ORIGINS=*,http://localhost,https://localhost,http://127.0.0.1,https://127.0.0.1
-      # Примусово обираємо CUDA backend (за потреби)
-      - OLLAMA_LLM_LIBRARY=cuda
-      # Трохи обмежимо паралелізм на 4ГіБ VRAM (зайві великі значення тільки шкодять)
-      - OLLAMA_NUM_PARALLEL=2
-      - OLLAMA_CONTEXT_LENGTH=4096
-      - OLLAMA_KV_CACHE_TYPE=f16
-      - OLLAMA_KEEP_ALIVE=10m
-      # Не чіпаємо LD_LIBRARY_PATH — його виставить NVIDIA toolkit
-      # Для явності можна лишити видимим саме цей GPU:
-      - NVIDIA_VISIBLE_DEVICES=0
-      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
-    volumes:
-      - ollama:/root/.ollama
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:11434/api/tags"]
-      interval: 10s
-      timeout: 5s
-      retries: 30
-      start_period: 10s
-    # Правильний спосіб дати контейнеру GPU у Compose (див. офіційні доки)
+    ports: ["11434:11434"]
+
+    # ✅ ОФІЦІЙНИЙ спосіб дати GPU в Compose
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: 1              # або 'all'
-              capabilities: [gpu]
+              device_ids: ["0"]         # або count: 1
+              capabilities: [gpu]       # обов'язково!
+
+    environment:
+      # Примусово увімкнути CUDA-бекенд у Ollama
+      - OLLAMA_LLM_LIBRARY=cuda
+      # Ліміт паралельності скромний, щоб не впертись у VRAM 4 ГБ
+      - OLLAMA_NUM_PARALLEL=1
+      - OLLAMA_KEEP_ALIVE=10m
+      - OLLAMA_KV_CACHE_TYPE=f16
+      # Явно вкажемо видиму карту (деякі середовища це потребують)
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - CUDA_VISIBLE_DEVICES=0
+      # FlashAttention на Pascal не допомагає — вимикаємо
+      - OLLAMA_FLASH_ATTENTION=false
+
+    # Послаблюємо профілі безпеки — це усуває 304 у частини систем
+    security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined
+    privileged: true
+
+    volumes:
+      - ollama:/root/.ollama
+
+    healthcheck:
+      test: ["CMD", "bash", "-lc", "curl -fsS http://127.0.0.1:11434/api/tags >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
 
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
