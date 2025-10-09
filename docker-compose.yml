@@ -38,11 +38,11 @@ services:
       - ollama:/root/.ollama
 
     healthcheck:
-      test: ["CMD", "bash", "-lc", "ollama list >/dev/null 2>&1 || exit 1"]
+      test: ["CMD", "ollama", "list"]
       interval: 10s
       timeout: 5s
       retries: 30
-      start_period: 10s
+      start_period: 40s
 
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
@@ -62,6 +62,11 @@ services:
       - WHISPER_MODEL_AUTO_UPDATE=false
       - OLLAMA_NUM_PARALLEL=1
       - UVICORN_LOOP=asyncio
+    security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined
+    ulimits:
+      nofile: 65536
     ports:
       - "3000:8080"
     volumes:
