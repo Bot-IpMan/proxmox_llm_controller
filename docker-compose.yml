@@ -1,3 +1,11 @@
+version: "3.9"
+
+# docker-compose.yml (fixed for кращу утилізацію GPU на GTX 1050 Ti)
+# Головні правки:
+# 1) Паралельність виставляється на сервері Ollama (OLLAMA_NUM_PARALLEL), а не в UI.
+# 2) Усі batch/ubatch/num_ctx/num_thread — задаються в Modelfile або в API options (а НЕ через OLLAMA_* env).
+# 3) Прибрано зайві змінні середовища, які Ollama не читає на рівні сервера.
+
 services:
   ollama:
     image: ollama/ollama:latest
@@ -6,44 +14,22 @@ services:
     ports:
       - "11434:11434"
     environment:
-      - NVIDIA_VISIBLE_DEVICES=0
-      - NVIDIA_DRIVER_CAPABILITIES=all
-      - LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu
-      - PATH=/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      # Дозволяємо CORS з будь-якого оріджина (для Open WebUI тощо)
       - OLLAMA_ORIGINS=*
-      
-      # GPU налаштування
-      - OLLAMA_GPU_LAYERS=999
-      - OLLAMA_NUM_GPU=1
+      # Тримати модель у пам’яті довше для перевикористання
+      - OLLAMA_KEEP_ALIVE=10m
+      # Ключове: скільки паралельних запитів ОДНА модель може обробляти
+      - OLLAMA_NUM_PARALLEL=8
+      # Завантажуємо тільки одну модель одночасно — максимум ресурсів на неї
       - OLLAMA_MAX_LOADED_MODELS=1
-      
-      # Паралелізм - КЛЮЧОВІ параметри для завантаження GPU
-      - OLLAMA_NUM_PARALLEL=16        # Ще більше для максимальної утилізації
-      - OLLAMA_MAX_QUEUE=4096
-      - OLLAMA_SCHED_SPREAD=true      # Розподіл навантаження
-      
-      # CPU threads - мінімізуємо для GPU
-      - OLLAMA_NUM_THREADS=1
-      - OMP_NUM_THREADS=1
-      - OPENBLAS_NUM_THREADS=1
-      
-      # Memory і batching
-      - OLLAMA_MAX_VRAM=3800          # Максимум для 4GB карти
-      - OLLAMA_BATCH_SIZE=512         # Оптимальніше для GTX 1050 Ti
-      - OLLAMA_UBATCH_SIZE=128        # Micro-batch для inference
-      - OLLAMA_CONTEXT_LENGTH=4096    # Зменшено для економії VRAM
-      - OLLAMA_GPU_OVERHEAD=0
-      - OLLAMA_RUNNERS_MAX=8          # Максимум concurrent runners
-      
-      # Flash Attention і KV Cache
-      - OLLAMA_FLASH_ATTENTION=true
-      - OLLAMA_KV_CACHE_TYPE=f16
-      
-      # Оригінальні налаштування
-      - OLLAMA_USE_GPU=${OLLAMA_USE_GPU:-true}
-      - OLLAMA_PREFERRED_GPU_NAME=${OLLAMA_PREFERRED_GPU_NAME:-NVIDIA GeForce GTX 1050 Ti}
-      - OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE:-5m}  # Збільшено для перевикористання моделі
-      
+      # Довша черга запитів, аби не відбивало 503 під навантаженням
+      - OLLAMA_MAX_QUEUE=1024
+      # Оберіть GPU (0 — перша карта)
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      # Часовий пояс
+      - TZ=Europe/Kyiv
+    # Якщо ти використовуєш скрипт вибору GPU — залишаємо його
     entrypoint: ["/usr/local/bin/ollama-select-gpu.sh"]
     command: ["serve"]
     healthcheck:
@@ -55,13 +41,13 @@ services:
     volumes:
       - ollama:/root/.ollama
       - ./scripts/ollama-select-gpu.sh:/usr/local/bin/ollama-select-gpu.sh:ro
-    privileged: true
+    # GPU для контейнера (Compose офіційно)
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: ${NVIDIA_GPU_COUNT:-1}
+              count: 1           # або 'all'
               capabilities: [gpu]
 
   open-webui:
@@ -76,16 +62,19 @@ services:
       - seccomp=unconfined
       - apparmor=unconfined
     environment:
+      # Під’єднання до Ollama
       - OLLAMA_BASE_URL=http://ollama:11434
       - OLLAMA_API_BASE_URL=http://ollama:11434
+      # RAG/Whisper — лишив як у тебе
       - RAG_EMBEDDING_ENGINE=ollama
       - RAG_EMBEDDING_MODEL=nomic-embed-text
       - ENABLE_RAG_WEB_SEARCH=true
       - RAG_EMBEDDING_MODEL_AUTO_UPDATE=false
       - WHISPER_MODEL=base
       - WHISPER_MODEL_AUTO_UPDATE=false
-      - OLLAMA_NUM_PARALLEL=1
       - UVICORN_LOOP=asyncio
+      - TZ=Europe/Kyiv
+      # ВАЖЛИВО: НЕ ставимо тут OLLAMA_NUM_PARALLEL — це змінна сервера Ollama.
     ports:
       - "3000:8080"
     volumes:
@@ -121,6 +110,7 @@ services:
       - ADB_BINARY=${ADB_BINARY:-}
       - BLISS_OPENAPI_PATH=${BLISS_OPENAPI_PATH:-}
       - UVICORN_LOOP=asyncio
+      - TZ=Europe/Kyiv
     volumes:
       - ./keys:/keys:ro
       - ./openapi.json:/app/openapi.json:ro
@@ -138,3 +128,16 @@ services:
 volumes:
   ollama:
   openwebui:
+
+# === Підказки (коментарі) ===
+# • Параметри типу num_batch / num_ctx / num_thread / num_gpu треба задавати
+#   в Modelfile через 'PARAMETER ...' або в 'options' під час API-виклику.
+#   Приклади Modelfile:
+#
+#   FROM llama3.1:8b-instruct
+#   PARAMETER num_ctx 4096
+#   PARAMETER num_batch 512
+#   PARAMETER num_thread 6
+#   PARAMETER num_gpu 1
+#
+# • Для тесту завантаження GPU зроби кілька паралельних викликів до Ollama API.
