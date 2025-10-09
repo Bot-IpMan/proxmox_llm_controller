@@ -18,7 +18,7 @@ services:
       # Примусово увімкнути CUDA-бекенд у Ollama
       - OLLAMA_LLM_LIBRARY=cuda
       # Ліміт паралельності скромний, щоб не впертись у VRAM 4 ГБ
-      - OLLAMA_NUM_PARALLEL=3
+      - OLLAMA_NUM_PARALLEL=2
       - OLLAMA_KEEP_ALIVE=10m
       - OLLAMA_KV_CACHE_TYPE=f16
       # Явно вкажемо видиму карту (деякі середовища це потребують)
