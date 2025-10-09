@@ -18,8 +18,8 @@ services:
       - OLLAMA_MAX_LOADED_MODELS=1
       
       # Паралелізм - КЛЮЧОВІ параметри для завантаження GPU
-      - OLLAMA_NUM_PARALLEL=12        # Збільшено для більшого завантаження
-      - OLLAMA_MAX_QUEUE=2048
+      - OLLAMA_NUM_PARALLEL=16        # Ще більше для максимальної утилізації
+      - OLLAMA_MAX_QUEUE=4096
       - OLLAMA_SCHED_SPREAD=true      # Розподіл навантаження
       
       # CPU threads - мінімізуємо для GPU
@@ -33,6 +33,7 @@ services:
       - OLLAMA_UBATCH_SIZE=128        # Micro-batch для inference
       - OLLAMA_CONTEXT_LENGTH=4096    # Зменшено для економії VRAM
       - OLLAMA_GPU_OVERHEAD=0
+      - OLLAMA_RUNNERS_MAX=8          # Максимум concurrent runners
       
       # Flash Attention і KV Cache
       - OLLAMA_FLASH_ATTENTION=true
