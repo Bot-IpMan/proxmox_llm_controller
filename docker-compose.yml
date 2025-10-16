@@ -6,6 +6,8 @@ services:
       - "5050:5050"
     restart: unless-stopped
 
+    privileged: true
+
     environment:
       - API_KEY=anything             # той самий, що у Open WebUI
       - PORT=5050
@@ -20,8 +22,6 @@ services:
     security_opt:
       - seccomp=unconfined
       - apparmor=unconfined
-    # Якщо запускаєш у LXC/Proxmox і все ще блокує — тимчасово розкоментуй:
-    # privileged: true
 
   ollama:
     image: ollama/ollama:0.12.3
