@@ -6,6 +6,10 @@ services:
       REQUIRE_API_KEY: "false"
     ports:
       - "5050:5050"
+    security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined
+    privileged: true
     restart: unless-stopped
 
   ollama:
