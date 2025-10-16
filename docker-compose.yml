@@ -2,6 +2,8 @@ services:
   openai-edge-tts:
     image: travisvn/openai-edge-tts:latest
     container_name: openai-edge-tts
+    environment:
+      REQUIRE_API_KEY: "false"
     ports:
       - "5050:5050"
     restart: unless-stopped
