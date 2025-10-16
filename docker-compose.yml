@@ -8,6 +8,11 @@ services:
 
     privileged: true
 
+    # Додаємо публічні DNS, щоб сервіс діставався до API Microsoft
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
     environment:
       - API_KEY=anything             # той самий, що у Open WebUI
       - PORT=5050
@@ -15,8 +20,10 @@ services:
       - DEFAULT_VOICE=uk-UA-PolinaNeural   # можна uk-UA-OstapNeural
       - DEFAULT_RESPONSE_FORMAT=mp3
       - DEFAULT_SPEED=1.0
-      - REQUIRE_API_KEY=true
+      - REQUIRE_API_KEY=false
       - DETAILED_ERROR_LOGGING=true
+      # Мапінг голосів OpenAI -> Microsoft Neural Voices
+      - VOICE_MAPPINGS={"alloy":"uk-UA-PolinaNeural","echo":"uk-UA-OstapNeural","fable":"en-US-JennyNeural","onyx":"en-US-GuyNeural","nova":"en-US-AriaNeural","shimmer":"en-US-EmmaNeural"}
 
     # усуває "Permission denied" на socketpair() у Python/asyncio
     security_opt:
@@ -92,7 +99,8 @@ services:
       - AUDIO_TTS_OPENAI_API_BASE_URL=http://openai-edge-tts:5050/v1
       - AUDIO_TTS_OPENAI_API_KEY=anything
       - AUDIO_TTS_MODEL=tts-1
-      - AUDIO_TTS_VOICE=uk-UA-PolinaNeural
+      # Використовуємо ID з /v1/audio/voices (співпадає з VOICE_MAPPINGS)
+      - AUDIO_TTS_VOICE=alloy
       - AUDIO_TTS_SPLIT_ON=punctuation
     security_opt:
       - seccomp=unconfined
