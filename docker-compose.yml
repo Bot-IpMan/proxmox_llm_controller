@@ -2,15 +2,26 @@ services:
   openai-edge-tts:
     image: travisvn/openai-edge-tts:latest
     container_name: openai-edge-tts
-    environment:
-      REQUIRE_API_KEY: "false"
     ports:
       - "5050:5050"
+    restart: unless-stopped
+
+    environment:
+      - API_KEY=anything             # той самий, що у Open WebUI
+      - PORT=5050
+      - DEFAULT_LANGUAGE=uk-UA
+      - DEFAULT_VOICE=uk-UA-PolinaNeural   # можна uk-UA-OstapNeural
+      - DEFAULT_RESPONSE_FORMAT=mp3
+      - DEFAULT_SPEED=1.0
+      - REQUIRE_API_KEY=true
+      - DETAILED_ERROR_LOGGING=true
+
+    # усуває "Permission denied" на socketpair() у Python/asyncio
     security_opt:
       - seccomp=unconfined
       - apparmor=unconfined
-    privileged: true
-    restart: unless-stopped
+    # Якщо запускаєш у LXC/Proxmox і все ще блокує — тимчасово розкоментуй:
+    # privileged: true
 
   ollama:
     image: ollama/ollama:0.12.3
