@@ -145,16 +145,21 @@ python -m controller.bliss_social_automation `
 
 ### Увімкнення GPU для Ollama
 
-Базовий `docker-compose.yml` тепер налаштований так, щоб лише `ollama` напряму використовувала NVIDIA GPU (через
-`gpus: all` і відповідні змінні середовища, разом зі стартовим скриптом
-[`scripts/ollama-select-gpu.sh`](scripts/ollama-select-gpu.sh)), а `proxmox-controller` спілкувався з нею по HTTP
-без власних GPU-вимог. Для `ollama` додано змінну `OLLAMA_ORIGINS=*`, яка допомагає під час звернень із
-фронтендів, а `proxmox-controller` тепер одразу знає адресу Ollama через `OLLAMA_BASE_URL=http://ollama:11434`. Якщо
-потрібно повністю вимкнути GPU для Ollama, встановіть `OLLAMA_USE_GPU=false` або задайте `NVIDIA_VISIBLE_DEVICES=` у
-`.env`.
+Типовий `docker-compose.yml` не вимагає GPU — `ollama` стартує в CPU-режимі з консервативним паралелізмом
+(`OLLAMA_NUM_PARALLEL=1`), тож стек без проблем підіймається навіть на хостах без відеокарти. Це усуває помилку
+`nvidia-container-cli: initialization error: nvml error: driver not loaded`, яка виникала раніше, коли Compose
+намагався зарезервувати неіснуючий GPU під час запуску.
 
-Файл `docker-compose.gpu.yml` залишається сумісним — він дублює ці параметри й може використовуватися для ручного
-override в існуючих деплойментах, але для нових запусків достатньо стандартного `docker compose up -d`.
+Щоб задіяти NVIDIA GPU, додайте до команди ще один файл:
+
+```sh
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+```
+
+`docker-compose.gpu.yml` підмикає CUDA-бібліотеку (`OLLAMA_LLM_LIBRARY=cuda`), повертає паралельність `ollama`
+до значення `2`, додає обовʼязкові `deploy.resources.reservations` та містить допоміжний сервіс `gpu-test`, який
+швидко перевіряє доступність драйвера (`nvidia-smi`). Будь-який параметр можна перевизначити через `.env` — наприклад,
+`NVIDIA_VISIBLE_DEVICES`, `CUDA_VISIBLE_DEVICES` або `NVIDIA_GPU_COUNT`.
 
 #### Додаткові Python-залежності контролера для CUDA
 
