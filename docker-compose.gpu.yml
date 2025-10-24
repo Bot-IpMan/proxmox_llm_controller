@@ -1,14 +1,30 @@
 services:
   ollama:
     environment:
+      - OLLAMA_LLM_LIBRARY=cuda
+      - OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-2}
       - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES-}
       - NVIDIA_DRIVER_CAPABILITIES=${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}
+      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
+      - OLLAMA_FLASH_ATTENTION=${OLLAMA_FLASH_ATTENTION:-false}
       - OLLAMA_USE_GPU=${OLLAMA_USE_GPU:-true}
       - OLLAMA_PREFERRED_GPU_NAME=${OLLAMA_PREFERRED_GPU_NAME:-NVIDIA GeForce GTX 1050 Ti}
     entrypoint: ["/usr/local/bin/ollama-select-gpu.sh"]
     command: ["serve"]
     volumes:
       - ./scripts/ollama-select-gpu.sh:/usr/local/bin/ollama-select-gpu.sh:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: ${NVIDIA_GPU_COUNT:-1}
+              capabilities: [gpu]
+
+  # Додатковий сервіс для швидкої перевірки GPU через Compose
+  gpu-test:
+    image: nvidia/cuda:12.9.0-base-ubuntu22.04
+    command: ["bash", "-lc", "nvidia-smi && ls -l /dev/nvidia* || true"]
     deploy:
       resources:
         reservations:

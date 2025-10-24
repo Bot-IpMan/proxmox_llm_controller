@@ -36,28 +36,11 @@ services:
     restart: unless-stopped
     ports: ["11434:11434"]
 
-    # ✅ ОФІЦІЙНИЙ спосіб дати GPU в Compose
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              device_ids: ["0"]         # або count: 1
-              capabilities: [gpu]       # обов'язково!
-
     environment:
-      # Примусово увімкнути CUDA-бекенд у Ollama
-      - OLLAMA_LLM_LIBRARY=cuda
-      # Ліміт паралельності скромний, щоб не впертись у VRAM 4 ГБ
-      - OLLAMA_NUM_PARALLEL=2
+      # Консервативні налаштування, сумісні з CPU-хостами
+      - OLLAMA_NUM_PARALLEL=1
       - OLLAMA_KEEP_ALIVE=10s
       - OLLAMA_KV_CACHE_TYPE=f16
-      # Явно вкажемо видиму карту (деякі середовища це потребують)
-      - NVIDIA_VISIBLE_DEVICES=0
-      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
-      - CUDA_VISIBLE_DEVICES=0
-      # FlashAttention на Pascal не допомагає — вимикаємо
-      - OLLAMA_FLASH_ATTENTION=false
 
     # Послаблюємо профілі безпеки — це усуває 304 у частини систем
     security_opt:
@@ -150,18 +133,6 @@ services:
       - ./keys:/keys:ro
       - ./openapi.json:/app/openapi.json:ro
       - ./openapi_bliss.json:/app/openapi_bliss.json:ro
-
-  # Додатковий сервіс для швидкої перевірки GPU через Compose
-  gpu-test:
-    image: nvidia/cuda:12.9.0-base-ubuntu22.04
-    command: ["bash", "-lc", "nvidia-smi && ls -l /dev/nvidia* || true"]
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
 
 volumes:
   ollama:
