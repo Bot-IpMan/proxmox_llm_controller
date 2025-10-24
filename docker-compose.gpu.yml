@@ -1,5 +1,6 @@
 services:
   ollama:
+    runtime: nvidia
     environment:
       - OLLAMA_LLM_LIBRARY=cuda
       - OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-2}
@@ -24,6 +25,7 @@ services:
   # Додатковий сервіс для швидкої перевірки GPU через Compose
   gpu-test:
     image: nvidia/cuda:12.9.0-base-ubuntu22.04
+    runtime: nvidia
     command: ["bash", "-lc", "nvidia-smi && ls -l /dev/nvidia* || true"]
     deploy:
       resources:
@@ -37,6 +39,7 @@ services:
     build:
       args:
         INSTALL_GPU_EXTRAS: ${INSTALL_GPU_EXTRAS:-true}
+    runtime: nvidia
     environment:
       - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES-}
       - NVIDIA_DRIVER_CAPABILITIES=${NVIDIA_DRIVER_CAPABILITIES:-compute,utility}

@@ -146,8 +146,10 @@ python -m controller.bliss_social_automation `
 ### Увімкнення GPU для Ollama
 
 Типовий `docker-compose.yml` не вимагає GPU — `ollama` стартує в CPU-режимі з консервативним паралелізмом
-(`OLLAMA_NUM_PARALLEL=1`), тож стек без проблем підіймається навіть на хостах без відеокарти. Це усуває помилку
-`nvidia-container-cli: initialization error: nvml error: driver not loaded`, яка виникала раніше, коли Compose
+(`OLLAMA_NUM_PARALLEL=1`), тож стек без проблем підіймається навіть на хостах без відеокарти. Ми додатково
+примусово вказуємо звичайний `runc`-рантайм для всіх сервісів, щоб Docker не підхоплював
+`nvidia-container-runtime`, якщо він був налаштований раніше. Це остаточно усуває помилку
+`nvidia-container-cli: initialization error: nvml error: driver not loaded`, яка виникала, коли Compose
 намагався зарезервувати неіснуючий GPU під час запуску.
 
 Щоб задіяти NVIDIA GPU, додайте до команди ще один файл:

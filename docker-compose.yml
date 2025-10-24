@@ -36,6 +36,10 @@ services:
     restart: unless-stopped
     ports: ["11434:11434"]
 
+    # Явно використовуємо стандартний runc-рантайм, щоб Docker не намагався
+    # запускати контейнер через nvidia-container-runtime на хостах без GPU.
+    runtime: runc
+
     environment:
       # Консервативні налаштування, сумісні з CPU-хостами
       - OLLAMA_NUM_PARALLEL=1
@@ -90,6 +94,11 @@ services:
       - apparmor=unconfined
     ulimits:
       nofile: 65536
+
+    # Фіксуємо стандартний рантайм і для допоміжних сервісів, щоб уникнути
+    # запуску через nvidia-container-runtime, якщо він налаштований за
+    # замовчуванням у Docker.
+    runtime: runc
     ports:
       - "3000:8080"
     volumes:
@@ -133,6 +142,10 @@ services:
       - ./keys:/keys:ro
       - ./openapi.json:/app/openapi.json:ro
       - ./openapi_bliss.json:/app/openapi_bliss.json:ro
+
+    # Запускаємо контролер також через runc, щоб уникнути залежності від
+    # nvidia-container-runtime на системах без відеокарти.
+    runtime: runc
 
 volumes:
   ollama:
